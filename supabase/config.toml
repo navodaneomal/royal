@@ -1,0 +1,4 @@
+# Supabase local config (supabase start). See docs/decisions/ADR-0002.
+project_id = "storyframe"
+[functions.progress-commit]
+verify_jwt = true

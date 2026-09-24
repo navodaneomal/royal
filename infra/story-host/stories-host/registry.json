@@ -1,0 +1,352 @@
+{
+  "generatedAt": "2026-09-24T04:51:21.995Z",
+  "stories": [
+    {
+      "storyId": "6f9f2c6a-3d5e-4b1c-9a52-1f4be8a30d17",
+      "slug": "the-tulip-and-the-jester",
+      "channels": {
+        "production": {
+          "releaseId": "r52b1e2eef8ae",
+          "disabled": false
+        }
+      },
+      "releases": [
+        {
+          "releaseId": "r52b1e2eef8ae",
+          "version": "1.0.0",
+          "packageHash": "52b1e2eef8ae35f5ce5e7cdceb9ce43d684f9487d4bf28c1706a65d4aef10fb3",
+          "path": "packages/the-tulip-and-the-jester/r52b1e2eef8ae/index.html",
+          "publishedAt": "2026-09-24T04:51:19.765Z",
+          "status": "approved",
+          "validation": {
+            "errors": [],
+            "warnings": []
+          }
+        }
+      ],
+      "title": "The Tulip & The Jester",
+      "tagline": "A story that was never meant to be remembered.",
+      "cover": "packages/the-tulip-and-the-jester/r52b1e2eef8ae/cover.svg",
+      "meta": {
+        "content": {
+          "rating": "teen",
+          "warnings": [
+            "grief",
+            "historical injustice"
+          ],
+          "estimatedMinutes": {
+            "firstSession": 20,
+            "total": [
+              90,
+              150
+            ]
+          }
+        },
+        "accessibility": {
+          "keyboard": true,
+          "screenReader": true,
+          "reducedMotion": true,
+          "captions": true,
+          "untimedMode": true,
+          "nonAudioAlternative": true
+        },
+        "languages": [
+          "en"
+        ],
+        "offlineEligible": true,
+        "estimatedMinutes": {
+          "firstSession": 20,
+          "total": [
+            90,
+            150
+          ]
+        },
+        "sizeBytes": 270535,
+        "checkpoints": [
+          {
+            "id": "part-1",
+            "label": "Part I — The Birthday",
+            "order": 10
+          },
+          {
+            "id": "part-2",
+            "label": "Part II — The Jester Stays",
+            "order": 20
+          },
+          {
+            "id": "part-3",
+            "label": "Part III — The Garden of Tulips",
+            "order": 30
+          },
+          {
+            "id": "part-4",
+            "label": "Part IV — The Masked Night",
+            "order": 40
+          },
+          {
+            "id": "part-5",
+            "label": "Part V — Beyond the Palace",
+            "order": 50
+          },
+          {
+            "id": "part-6",
+            "label": "Part VI — The Letter",
+            "order": 60
+          },
+          {
+            "id": "part-7",
+            "label": "Part VII — The Falling Kingdom",
+            "order": 70
+          },
+          {
+            "id": "part-8",
+            "label": "Part VIII — The Last Tulip",
+            "order": 80
+          },
+          {
+            "id": "part-9",
+            "label": "Part IX — The Truth",
+            "order": 90
+          },
+          {
+            "id": "part-10",
+            "label": "Part X — The Last Dance",
+            "order": 100
+          },
+          {
+            "id": "final",
+            "label": "The names have been said",
+            "order": 110
+          }
+        ],
+        "items": [
+          {
+            "id": "candle",
+            "name": "The candle",
+            "description": "A candle is a clock that only runs once.",
+            "alt": "A single lit candle with a steady flame",
+            "spoilerCheckpoint": "part-1"
+          },
+          {
+            "id": "part-1:3",
+            "name": "The two hundred and seventh gift",
+            "description": "Counted twice by a man of sixty-three, at four in the morning.",
+            "alt": "A plain red clay pot, chipped at the rim",
+            "spoilerCheckpoint": "part-1"
+          },
+          {
+            "id": "part-4:2",
+            "name": "The wolf's head",
+            "description": "Half past midnight, during the fourth figure.",
+            "alt": "A carnival wolf mask resting on black silk",
+            "spoilerCheckpoint": "part-4"
+          },
+          {
+            "id": "part-5:3",
+            "name": "Why she knew the name Toussaint",
+            "description": "Somewhere around the tenth mile, and then it went out of her head.",
+            "alt": "Two water pails set down in an inn yard",
+            "spoilerCheckpoint": "part-5"
+          },
+          {
+            "id": "part-7:2",
+            "name": "Eleven sous and a coat",
+            "description": "The fair of Saint-Germain, March 1750.",
+            "alt": "A worn wool coat folded over a fairground bench",
+            "spoilerCheckpoint": "part-7"
+          },
+          {
+            "id": "garden:41",
+            "name": "Bed forty-one",
+            "description": "Against the wall, in the corner, in the shade after four o'clock.",
+            "alt": "A single white tulip against a brick wall",
+            "spoilerCheckpoint": "part-3"
+          },
+          {
+            "id": "part-10:4",
+            "name": "Personne",
+            "description": "French. Meaning: nobody. Also: a person.",
+            "alt": "A page of handwriting with one word underlined",
+            "spoilerCheckpoint": "part-10"
+          }
+        ],
+        "achievements": [
+          {
+            "id": "the-whole-house",
+            "name": "The Whole House",
+            "description": "Read all ten parts.",
+            "secret": false
+          },
+          {
+            "id": "every-hidden-thing",
+            "name": "Every Hidden Thing",
+            "description": "Find all seven secrets.",
+            "secret": true
+          },
+          {
+            "id": "say-them-out-loud",
+            "name": "Say Them Out Loud",
+            "description": "Say all forty-one names on the final page.",
+            "secret": false
+          }
+        ],
+        "choices": [],
+        "endings": [
+          {
+            "id": "the-final-page",
+            "name": "The Final Page"
+          }
+        ],
+        "stateSchemaVersion": 1,
+        "protocolVersion": "1.0",
+        "capabilities": [
+          "progress.write",
+          "inventory.write",
+          "achievement.unlock"
+        ]
+      }
+    },
+    {
+      "storyId": "2b4dfd0e-91c8-45c0-8a3e-6f0a5cf6f2aa",
+      "slug": "neon-horizon",
+      "channels": {
+        "production": {
+          "releaseId": "r6f431b482c57",
+          "disabled": false
+        }
+      },
+      "releases": [
+        {
+          "releaseId": "r6f431b482c57",
+          "version": "1.0.0",
+          "packageHash": "6f431b482c57764aa3e763453b8539fa3cd92a0bd8233ca3911c409ac9eff7d9",
+          "path": "packages/neon-horizon/r6f431b482c57/index.html",
+          "publishedAt": "2026-09-24T04:51:19.887Z",
+          "status": "approved",
+          "validation": {
+            "errors": [],
+            "warnings": []
+          }
+        }
+      ],
+      "title": "Neon Horizon",
+      "tagline": "A dead relay station. A live signal.",
+      "cover": "packages/neon-horizon/r6f431b482c57/cover.svg",
+      "meta": {
+        "content": {
+          "rating": "everyone",
+          "warnings": [
+            "isolation"
+          ],
+          "estimatedMinutes": {
+            "firstSession": 8,
+            "total": [
+              10,
+              20
+            ]
+          }
+        },
+        "accessibility": {
+          "keyboard": true,
+          "screenReader": true,
+          "reducedMotion": true,
+          "captions": true,
+          "untimedMode": true,
+          "nonAudioAlternative": true
+        },
+        "languages": [
+          "en"
+        ],
+        "offlineEligible": true,
+        "estimatedMinutes": {
+          "firstSession": 8,
+          "total": [
+            10,
+            20
+          ]
+        },
+        "sizeBytes": 30155,
+        "checkpoints": [
+          {
+            "id": "boot",
+            "label": "Docking, in the dark",
+            "order": 10
+          },
+          {
+            "id": "hall",
+            "label": "The relay hall",
+            "order": 20
+          },
+          {
+            "id": "aligned",
+            "label": "The old band, open",
+            "order": 30
+          },
+          {
+            "id": "decided",
+            "label": "The call, made",
+            "order": 40
+          }
+        ],
+        "items": [
+          {
+            "id": "logbook-page",
+            "name": "Logbook page",
+            "description": "Seven tenths. Four dishes. One operator.",
+            "alt": "A torn logbook page with three circled entries",
+            "spoilerCheckpoint": "hall"
+          },
+          {
+            "id": "coil",
+            "name": "The transmission coil",
+            "description": "Good for exactly one full transmission.",
+            "alt": "A copper coil, bright and fragile",
+            "spoilerCheckpoint": "aligned"
+          }
+        ],
+        "achievements": [
+          {
+            "id": "clean-signal",
+            "name": "Clean Signal",
+            "description": "Open the band without a single hint.",
+            "secret": false
+          },
+          {
+            "id": "listener",
+            "name": "A Patient Ear",
+            "description": "Listen three times before the band opens.",
+            "secret": true
+          }
+        ],
+        "choices": [
+          {
+            "id": "final-call",
+            "label": "Burn the coil, or keep the light on",
+            "options": [
+              "transmit",
+              "stay"
+            ]
+          }
+        ],
+        "endings": [
+          {
+            "id": "signal-sent",
+            "name": "The Signal, Sent"
+          },
+          {
+            "id": "kept-company",
+            "name": "Kept Company"
+          }
+        ],
+        "stateSchemaVersion": 1,
+        "protocolVersion": "1.0",
+        "capabilities": [
+          "progress.write",
+          "inventory.write",
+          "achievement.unlock",
+          "choice.commit"
+        ]
+      }
+    }
+  ]
+}

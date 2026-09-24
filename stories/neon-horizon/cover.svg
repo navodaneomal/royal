@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-label="Neon Horizon — a green phosphor horizon line on a dark terminal screen">
+<rect width="600" height="800" fill="#04100b"/>
+<g opacity=".9">
+<circle cx="300" cy="430" r="150" fill="none" stroke="#175139" stroke-width="2"/>
+<circle cx="300" cy="430" r="150" fill="none" stroke="#59f7a6" stroke-width="2" stroke-dasharray="4 10" opacity=".8"/>
+<line x1="60" y1="430" x2="540" y2="430" stroke="#59f7a6" stroke-width="2.4"/>
+<line x1="60" y1="430" x2="540" y2="430" stroke="#59f7a6" stroke-width="8" opacity=".16"/>
+<path d="M120 430l40-28 30 28M300 430l24-64 22 64M430 430l30-40 26 40" fill="none" stroke="#2c8f60" stroke-width="1.6"/>
+</g>
+<g font-family="Menlo,Consolas,monospace" text-anchor="middle">
+<text x="300" y="600" font-size="46" fill="#59f7a6" letter-spacing="8">NEON</text>
+<text x="300" y="654" font-size="46" fill="#59f7a6" letter-spacing="8">HORIZON</text>
+<text x="300" y="706" font-size="14" fill="#2c8f60" letter-spacing="3">A DEAD RELAY STATION. A LIVE SIGNAL.</text>
+</g>
+<g fill="none" stroke="#0a2a1c" stroke-width="1">
+<line x1="0" y1="80" x2="600" y2="80"/><line x1="0" y1="86" x2="600" y2="86"/>
+<line x1="0" y1="720" x2="600" y2="720"/><line x1="0" y1="726" x2="600" y2="726"/>
+</g>
+</svg>

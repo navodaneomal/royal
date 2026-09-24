@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-label="The Tulip and The Jester — a single white tulip on cream paper">
+<defs>
+<filter id="wc"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="4" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="22"/></filter>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" seed="7"/><feColorMatrix type="saturate" values="0"/></filter>
+</defs>
+<rect width="600" height="800" fill="#FBF4E8"/>
+<g filter="url(#wc)" style="mix-blend-mode:multiply">
+<ellipse cx="300" cy="330" rx="150" ry="180" fill="#ECB490" opacity=".26"/>
+<path d="M300 560V400" stroke="#5D7455" stroke-width="7" fill="none"/>
+<path d="M300 480c-26-10-42-36-46-64 24 6 40 30 46 64z" fill="#77906B" opacity=".9"/>
+<path d="M300 402c-24 0-40-16-45-44-4-20 0-42 6-58 9 15 15 31 20 48 4-30 12-56 19-70 7 14 15 40 19 70 5-17 11-33 20-48 6 16 10 38 6 58-5 28-21 44-45 44z" fill="#F1E2CB" stroke="#8E6122" stroke-width="1.4" opacity=".97"/>
+</g>
+<g font-family="Georgia,serif" text-anchor="middle" fill="#3B322A">
+<text x="300" y="640" font-size="44" letter-spacing="6">THE TULIP</text>
+<text x="300" y="678" font-size="20" font-style="italic" fill="#8E6122" letter-spacing="10">&amp;</text>
+<text x="300" y="722" font-size="44" letter-spacing="6">THE JESTER</text>
+<text x="300" y="762" font-size="13" font-style="italic" fill="#665846">A story that was never meant to be remembered.</text>
+</g>
+<rect width="600" height="800" filter="url(#grain)" opacity=".06" style="mix-blend-mode:multiply"/>
+</svg>

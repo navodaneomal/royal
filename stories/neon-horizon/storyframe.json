@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schemas.storyframe.example/storyframe.v1.json",
+  "storyId": "2b4dfd0e-91c8-45c0-8a3e-6f0a5cf6f2aa",
+  "slug": "neon-horizon",
+  "version": "1.0.0",
+  "protocolVersion": "1.0",
+  "stateSchemaVersion": 1,
+  "title": "Neon Horizon",
+  "tagline": "A dead relay station. A live signal.",
+  "entrypoint": "index.html",
+  "languages": ["en"],
+  "defaultLanguage": "en",
+  "capabilities": ["progress.write", "inventory.write", "achievement.unlock", "choice.commit"],
+  "content": {
+    "rating": "everyone",
+    "warnings": ["isolation"],
+    "estimatedMinutes": { "firstSession": 8, "total": [10, 20] }
+  },
+  "accessibility": {
+    "keyboard": true,
+    "screenReader": true,
+    "reducedMotion": true,
+    "captions": true,
+    "untimedMode": true,
+    "nonAudioAlternative": true
+  },
+  "offline": {
+    "eligible": true,
+    "required": ["index.html"],
+    "optional": [],
+    "maxBytes": 524288
+  },
+  "checkpoints": [
+    { "id": "boot", "label": "Docking, in the dark", "order": 10 },
+    { "id": "hall", "label": "The relay hall", "order": 20 },
+    { "id": "aligned", "label": "The old band, open", "order": 30 },
+    { "id": "decided", "label": "The call, made", "order": 40 }
+  ],
+  "items": [
+    { "id": "logbook-page", "name": "Logbook page", "alt": "A torn logbook page with three circled entries", "description": "Seven tenths. Four dishes. One operator.", "spoilerCheckpoint": "hall" },
+    { "id": "coil", "name": "The transmission coil", "alt": "A copper coil, bright and fragile", "description": "Good for exactly one full transmission.", "spoilerCheckpoint": "aligned" }
+  ],
+  "achievements": [
+    { "id": "clean-signal", "name": "Clean Signal", "description": "Open the band without a single hint.", "secret": false },
+    { "id": "listener", "name": "A Patient Ear", "description": "Listen three times before the band opens.", "secret": true }
+  ],
+  "choices": [
+    { "id": "final-call", "label": "Burn the coil, or keep the light on", "options": ["transmit", "stay"] }
+  ],
+  "endings": [
+    { "id": "signal-sent", "name": "The Signal, Sent" },
+    { "id": "kept-company", "name": "Kept Company" }
+  ]
+}

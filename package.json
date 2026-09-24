@@ -1,0 +1,28 @@
+{
+  "name": "storyframe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The invisible continuity layer beneath radically different interactive worlds.",
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "sdk:build": "node packages/story-sdk/build.mjs",
+    "stories:build": "npm run sdk:build && node stories/the-tulip-and-the-jester/build-package.mjs && node stories/neon-horizon/build-package.mjs",
+    "stories:publish": "node packages/story-cli/src/storyframe.mjs publish stories/the-tulip-and-the-jester --channel production --yes && node packages/story-cli/src/storyframe.mjs publish stories/neon-horizon --channel production --yes",
+    "host": "node infra/story-host/server.mjs",
+    "dev": "npm run stories:build && npm run stories:publish && node scripts/dev.mjs",
+    "prebuild": "npm run stories:build && npm run stories:publish",
+    "build": "npm --workspace apps/web run build && node scripts/copy-host-into-dist.mjs",
+    "preview": "node scripts/preview.mjs",
+    "test": "vitest run",
+    "verify": "node verify.mjs",
+    "storyframe": "node packages/story-cli/src/storyframe.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

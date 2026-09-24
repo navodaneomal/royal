@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-sf-release="__SF_RELEASE_ID__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neon Horizon</title>
+<style>
+/* ── NEON HORIZON — a dead relay station, a live signal ──────────────
+   Deliberately nothing like a storybook: phosphor terminal, monospace,
+   scanlines. Proof that Storyframe stories own their identity. */
+:root{
+  --bg:#04100b; --bg2:#071a12; --phos:#59f7a6; --phos-dim:#2c8f60;
+  --phos-faint:#175139; --warn:#f7d359; --alert:#ff7a6e;
+  --mono:"IBM Plex Mono","Cascadia Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--phos);
+  font-family:var(--mono);font-size:clamp(14px,1.4vw + 9px,17px);line-height:1.65;
+  display:flex;flex-direction:column;
+}
+#crt{
+  position:fixed;inset:0;pointer-events:none;z-index:5;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);
+  mix-blend-mode:multiply;
+}
+html[data-motion="off"] #crt, html.no-scan #crt{display:none}
+#vign{position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(110% 90% at 50% 45%,transparent 55%,rgba(0,0,0,.5) 100%)}
+header{
+  padding:.7rem 1rem;border-bottom:1px solid var(--phos-faint);
+  display:flex;justify-content:space-between;gap:1rem;color:var(--phos-dim);
+  font-size:.78em;letter-spacing:.14em;text-transform:uppercase;
+}
+main{flex:1;overflow-y:auto;padding:1.1rem 1rem 1.4rem;scroll-behavior:smooth}
+html[data-motion="off"] main{scroll-behavior:auto}
+#log{max-width:52rem;margin:0 auto;white-space:pre-wrap;word-wrap:break-word}
+#log .line{margin:0 0 .35rem;min-height:1em}
+#log .sys{color:var(--phos-dim)}
+#log .you{color:#c8ffe4}
+#log .warn{color:var(--warn)}
+#log .alert{color:var(--alert)}
+#log .art{color:var(--phos-dim);font-size:.86em;line-height:1.25}
+form{border-top:1px solid var(--phos-faint);padding:.8rem 1rem;display:flex;gap:.6rem;max-width:54rem;margin:0 auto;width:100%}
+#prompt{color:var(--phos-dim)}
+#cmd{
+  flex:1;background:transparent;border:0;outline:none;color:var(--phos);
+  font:inherit;caret-color:var(--phos);
+}
+#cmd:focus-visible{outline:1px dashed var(--phos-dim);outline-offset:3px}
+#quick{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;padding:.4rem 1rem 1rem}
+#quick button{
+  background:var(--bg2);border:1px solid var(--phos-dim);color:var(--phos);
+  font:inherit;font-size:.82em;padding:.5rem .9rem;cursor:pointer;letter-spacing:.06em;
+  border-radius:2px;
+}
+#quick button:hover,#quick button:focus-visible{background:var(--phos-faint);outline:2px solid var(--phos);outline-offset:2px}
+#quick button[disabled]{opacity:.35;cursor:default}
+.blink{animation:blink 1.2s steps(1) infinite}
+html[data-motion="off"] .blink{animation:none}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#crt{display:none}.blink{animation:none}}
+</style>
+</head>
+<body>
+<div id="crt" aria-hidden="true"></div>
+<div id="vign" aria-hidden="true"></div>
+<header>
+  <span>RELAY STATION K-19 · MAINTENANCE CONSOLE</span>
+  <span id="clock">PWR 41%</span>
+</header>
+<main>
+  <div id="log" role="log" aria-live="polite" aria-label="Console output"></div>
+</main>
+<div id="quick" role="group" aria-label="Quick commands"></div>
+<form id="f" autocomplete="off">
+  <span id="prompt" aria-hidden="true">&gt;</span>
+  <label class="sr" for="cmd" style="position:absolute;left:-9999px">Type a command</label>
+  <input id="cmd" name="cmd" spellcheck="false" autocapitalize="off" placeholder="type a command — HELP lists them" />
+</form>
+<script src="./storyframe-sdk.js"></script>
+<script src="./story.js"></script>
+</body>
+</html>

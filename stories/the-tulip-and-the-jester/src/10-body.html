@@ -1,0 +1,86 @@
+<body>
+<a class="skip" href="#view">Skip to the story</a>
+
+<div id="grain" aria-hidden="true"></div>
+<div id="warm" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+<canvas id="particles" aria-hidden="true"></canvas>
+<div id="progress" aria-hidden="true"></div>
+
+<!-- ═══ THRESHOLD ═══════════════════════════════════════════════ -->
+<div id="threshold" role="dialog" aria-label="Enter the kingdom">
+  <div class="thr-inner">
+    <svg class="thr-tulip" viewBox="0 0 120 220" aria-hidden="true">
+      <defs>
+        <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f3e7d2"/><stop offset="55%" stop-color="#e2cfae"/><stop offset="100%" stop-color="#b99a6e"/>
+        </linearGradient>
+      </defs>
+      <path d="M60 210V96" stroke="#5f6b4e" stroke-width="2.2" fill="none"/>
+      <path d="M60 150c-14-6-24-22-26-38 14 3 24 16 26 38z" fill="#41503a"/>
+      <path d="M60 176c13-5 22-20 24-35-13 3-22 15-24 35z" fill="#4c5c42"/>
+      <path d="M60 98c-13 0-22-9-25-24-2-11 0-24 3-33 5 8 9 17 11 26 2-16 7-30 11-38 4 8 9 22 11 38 2-9 6-18 11-26 3 9 5 22 3 33-3 15-12 24-25 24z" fill="url(#tg)"/>
+      <path d="M60 98c-6 0-9-10-10-28-1-13 4-31 10-41 6 10 11 28 10 41-1 18-4 28-10 28z" fill="#f7efdf" opacity=".55"/>
+      <path d="M49 41c2 14 5 30 11 57M71 41c-2 14-5 30-11 57" stroke="#b99a6e" stroke-width=".7" fill="none" opacity=".8"/>
+    </svg>
+    <h1 class="thr-title" id="thrTitle" aria-label="The Tulip and The Jester">
+      <span class="w" style="animation-delay:1.5s">The&nbsp;Tulip</span>
+      <span class="amp w" style="animation-delay:2.1s">&amp;</span>
+      <span class="w" style="animation-delay:2.5s">The&nbsp;Jester</span>
+    </h1>
+    <p class="thr-sub">A story that was never meant to be remembered.</p>
+    <button class="enter" id="enterBtn" type="button">Enter the Kingdom<i class="ln"></i></button>
+    <p class="thr-note">Best with sound. Ten parts. Take your time.</p>
+  </div>
+  <svg class="candle" id="candle" viewBox="0 0 40 90" aria-hidden="true">
+    <g class="flame"><path d="M20 10c5 8 8 12 8 18a8 8 0 0 1-16 0c0-6 3-10 8-18z" fill="#f6cf94"/><path d="M20 20c2.4 4 3.6 6 3.6 9a3.6 3.6 0 0 1-7.2 0c0-3 1.2-5 3.6-9z" fill="#fff6e2"/></g>
+    <rect x="14" y="36" width="12" height="46" fill="#e9dfcb" opacity=".85"/>
+    <path d="M14 36h12l-1 46H15z" fill="#c9bda3" opacity=".5"/>
+    <ellipse cx="20" cy="36" rx="6" ry="2" fill="#f3ead6"/>
+  </svg>
+</div>
+
+<!-- ═══ CHROME ═════════════════════════════════════════════════ -->
+<header id="chrome" hidden>
+  <a class="brand" href="#/">
+    <svg viewBox="0 0 24 40" aria-hidden="true"><path d="M12 38V18" stroke="#8a7340" stroke-width="1.6" fill="none"/><path d="M12 20c-5 0-8-4-9-10 0-4 0-9 1-12 2 3 3 6 4 10 1-6 3-11 4-14 1 3 3 8 4 14 1-4 2-7 4-10 1 3 1 8 1 12-1 6-4 10-9 10z" fill="#c2a15f"/></svg>
+    <span class="full">The Tulip &amp; The Jester</span><span class="abbr">T &amp; J</span>
+  </a>
+  <button class="navbtn" id="menuBtn" type="button" aria-expanded="false" aria-controls="menu">
+    <span id="menuLabel">Index</span><span class="burger" aria-hidden="true"><i></i><i></i></span>
+  </button>
+</header>
+
+<nav id="menu" aria-label="Main">
+  <ul class="menu-list" id="menuList"></ul>
+</nav>
+
+<main id="view" tabindex="-1" aria-hidden="true"></main>
+
+<footer class="site" aria-hidden="true">
+  <p>The Tulip &amp; The Jester — Ten parts. No eleventh.</p>
+  <p style="margin-top:.8rem"><a href="#/" id="footHome">Return to the threshold</a></p>
+</footer>
+
+<div id="tools">
+  <button id="soundBtn" type="button" aria-pressed="false" aria-label="Toggle ambient sound" title="Ambient sound">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="wave1" d="M16.5 8.8a4.5 4.5 0 0 1 0 6.4"/><path id="wave2" d="M19 6.5a8 8 0 0 1 0 11"/><line id="mute" x1="16" y1="8" x2="22" y2="16"/></svg>
+  </button>
+  <button id="motionBtn" type="button" aria-pressed="true" aria-label="Toggle animation" title="Animation">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>
+  </button>
+</div>
+
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+  <div class="scrim" data-close></div>
+  <div class="sheet" role="document">
+    <button class="x" type="button" data-close aria-label="Close">&#10005;</button>
+    <p class="kind" id="modalKind"></p>
+    <h3 id="modalTitle"></h3>
+    <p class="meta" id="modalMeta" style="font-style:italic;color:#6a5c48;font-size:.86rem"></p>
+    <div class="body" id="modalBody"></div>
+    <p class="sign" id="modalSign"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
