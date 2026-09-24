@@ -202,3 +202,36 @@ export function migrateSnapshot(snapshot, manifest) {
   if (!validated.success) return { ok: false, code: 'snapshot_invalid', detail: validated.error.issues[0]?.message }
   return { ok: true, snapshot: validated.data, migrated: true, from }
 }
+
+/* ── cloud sync helpers (v2, used by the app AND the edge function) ─── */
+
+/** IDs in a snapshot that the release does not know. Empty ⇒ importable. */
+export function unknownSnapshotIds(snapshot, manifest) {
+  const reg = buildRegistry(manifest)
+  const out = []
+  if (!reg.checkpoints.has(snapshot.checkpointId)) out.push(`checkpoint:${snapshot.checkpointId}`)
+  for (const id of Object.keys(snapshot.inventory ?? {})) if (!reg.items.has(id)) out.push(`item:${id}`)
+  for (const id of snapshot.achievements ?? []) if (!reg.achievements.has(id)) out.push(`achievement:${id}`)
+  for (const [id, opt] of Object.entries(snapshot.committedChoices ?? {})) {
+    if (!reg.choices.has(id) || !reg.choices.get(id).has(opt)) out.push(`choice:${id}=${opt}`)
+  }
+  for (const id of snapshot.endingIds ?? []) if (!reg.endings.has(id)) out.push(`ending:${id}`)
+  return out
+}
+
+const sameSnapshot = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+/**
+ * Guest → account upgrade, and "this device wins" conflict resolution.
+ *   mode 'upgrade': the account's timeline stays canonical; the guest's
+ *                   discoveries are union-merged in (never checkpoints or
+ *                   choices); the guest snapshot is archived as a timeline.
+ *   mode 'replace': the reader chose this device's timeline; the server's
+ *                   current snapshot is archived, never overwritten.
+ */
+export function planImport(serverSnapshot, localSnapshot, mode = 'upgrade') {
+  if (!serverSnapshot) return { action: 'import', snapshot: localSnapshot, archive: null }
+  if (sameSnapshot(serverSnapshot, localSnapshot)) return { action: 'unchanged', snapshot: serverSnapshot, archive: null }
+  if (mode === 'replace') return { action: 'replace', snapshot: localSnapshot, archive: serverSnapshot }
+  return { action: 'merge', snapshot: unionMerge(serverSnapshot, localSnapshot), archive: localSnapshot }
+}

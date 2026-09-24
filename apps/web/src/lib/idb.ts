@@ -1,7 +1,7 @@
 /* A deliberately tiny IndexedDB wrapper — promises, one database,
    explicit stores. No dependency, no magic. */
 const DB_NAME = 'storyframe'
-const DB_VERSION = 1
+const DB_VERSION = 2   // v2 (Storyframe 2.0): notes, checkpointSnaps, sessions, drafts
 export const STORES = [
   'profile',        // key 'me' → { id, createdAt, analyticsConsent }
   'preferences',    // key 'me' → ReaderPreferences
@@ -14,8 +14,14 @@ export const STORES = [
   'archiveIndex',   // key `${storyId}:${itemId}` → { discoveredAt, checkpointId, timelineId }
   'achievements',   // key `${storyId}:${achId}` → { unlockedAt }
   'telemetry',      // autoincrement → { name, props, at }
-  'kv',             // misc: registry cache, session counters
+  'kv',             // misc: registry cache, onboarding flag, settings
+  // ── v2 ──
+  'notes',          // key noteId → { id, storyId, timelineId, anchorId, label, kind, text, at, source }
+  'checkpointSnaps',// key `${timelineId}:${checkpointId}` → { snapshot, revision, at } (first entry — replay points)
+  'sessions',       // autoincrement → { storyId, startedAt, seconds, day } (reading stats, opt-in)
+  'drafts',         // key draftId → Admin Studio wizard autosave
 ] as const
+const AUTO_INCREMENT = new Set(['telemetry', 'sessions'])
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -27,7 +33,7 @@ export function db(): Promise<IDBDatabase> {
       const d = req.result
       for (const name of STORES) {
         if (!d.objectStoreNames.contains(name)) {
-          d.createObjectStore(name, name === 'telemetry' ? { autoIncrement: true } : undefined)
+          d.createObjectStore(name, AUTO_INCREMENT.has(name) ? { autoIncrement: true } : undefined)
         }
       }
     }
@@ -103,6 +109,16 @@ export function reqp<T = any>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
+  })
+}
+
+export async function clearStore(store: string): Promise<void> {
+  const d = await db()
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction(store, 'readwrite')
+    tx.objectStore(store).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
   })
 }
 

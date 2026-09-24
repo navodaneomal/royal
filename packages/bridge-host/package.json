@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",
-  "exports": { ".": "./src/index.js" }
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "sideEffects": false
 }

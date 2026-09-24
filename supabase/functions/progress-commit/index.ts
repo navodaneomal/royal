@@ -6,9 +6,10 @@
  * Postgres RPC. The service role key exists only here — never in the app,
  * never in a story frame.
  *
- * STATUS: code-complete, structured to the blueprint; deploy with
- *   supabase functions deploy progress-commit
- * and wire VITE_SUPABASE_URL in apps/web to activate the cloud adapter.
+ * STATUS: code-complete, not deployed in this repository's verification (📦).
+ * Deploy with `supabase functions deploy progress-commit progress-import`,
+ * set STORIES_ORIGIN + APP_ORIGIN secrets, and put supabaseUrl +
+ * supabaseAnonKey in the app's config.json (DEPLOY.md, optional step).
  * This repository's demo build runs the identical logic locally in
  * apps/web/src/lib/store.ts (same reducer, same rules), so behaviour is
  * exercised even without a Supabase project.
@@ -17,7 +18,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 // The reducer is the same file the app and CLI use — one contract.
 import { applyMutation, buildRegistry, emptySnapshot, migrateSnapshot } from '../_shared/protocol/reducer.js'
-import { ManifestSchema, ProgressCommitPayload } from '../_shared/protocol/schemas.js'
+import { ProgressCommitPayload } from '../_shared/protocol/schemas.js'
+import { loadReleaseManifest, ensureStoryRow } from '../_shared/manifest.ts'
 
 const SNAPSHOT_RETENTION = 10
 
@@ -67,13 +69,16 @@ Deno.serve(async (req) => {
     if (!timeline || timeline.user_id !== userId || timeline.story_id !== storyId)
       return json(403, { error: 'timeline_forbidden' })
 
-    const { data: version } = await admin.from('story_versions')
-      .select('manifest, status').eq('story_id', storyId).eq('id', releaseId).maybeSingle()
-    const manifestRow = version ?? (await admin.from('story_versions')
-      .select('manifest, status').eq('story_id', storyId).eq('status', 'approved')
-      .order('created_at', { ascending: false }).limit(1).maybeSingle()).data
-    if (!manifestRow || manifestRow.status !== 'approved') return json(409, { error: 'release_not_approved' })
-    const manifest = ManifestSchema.parse(manifestRow.manifest)
+    // the release's own manifest, from the public content plane (v2 fix: v1
+    // looked in story_versions, which nothing populated)
+    let manifest
+    try {
+      const loaded = await loadReleaseManifest(storyId, releaseId ?? null)
+      manifest = loaded.manifest
+      await ensureStoryRow(admin, loaded.story)
+    } catch (e) {
+      return json(409, { error: (e as any)?.code ?? 'release_not_approved', detail: String((e as Error).message) })
+    }
 
     // 6. current progress row (created lazily)
     const { data: progress } = await admin.from('reader_progress')

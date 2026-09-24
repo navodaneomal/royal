@@ -114,3 +114,25 @@ describe('bridge envelope validation', () => {
     expect(HelloSchema.safeParse({ type: 'STORYFRAME_HELLO', protocol: '1.0', storyId: manifest.storyId, releaseId: 'r1', nonce: 'short' }).success).toBe(false)
   })
 })
+
+import { planImport, unknownSnapshotIds } from '@storyframe/protocol'
+describe('cloud import planning (shared by app + edge function)', () => {
+  it('imports when the account has nothing, merges discoveries otherwise, archives the loser', () => {
+    const guest = applyMutation(base(), { type: 'discovery', grantItems: [{ itemId: 'logbook-page', quantity: 1 }] }, registry).snapshot
+    expect(planImport(null, guest).action).toBe('import')
+    const server = applyMutation(base(), { type: 'checkpoint', checkpointId: 'aligned', unlockAchievements: ['listener'] }, registry).snapshot
+    const up = planImport(server, guest, 'upgrade')
+    expect(up.action).toBe('merge')
+    expect(up.snapshot.checkpointId).toBe('aligned')              // the account's timeline stays canonical
+    expect(up.snapshot.inventory['logbook-page']).toBeTruthy()    // guest discoveries union in
+    expect(up.archive).toEqual(guest)                             // and the guest snapshot is kept
+    const rep = planImport(server, guest, 'replace')
+    expect(rep).toMatchObject({ action: 'replace', snapshot: guest, archive: server })
+    expect(planImport(server, structuredClone(server)).action).toBe('unchanged')
+  })
+  it('refuses snapshots that mention IDs the release does not have', () => {
+    const snap = { ...base(), inventory: { ghost: { quantity: 1, discoveredAt: 'x' } }, committedChoices: { 'final-call': 'fly' } }
+    expect(unknownSnapshotIds(snap, manifest)).toEqual(['item:ghost', 'choice:final-call=fly'])
+    expect(unknownSnapshotIds(base(), manifest)).toEqual([])
+  })
+})

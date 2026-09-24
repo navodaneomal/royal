@@ -2,3 +2,5 @@
 project_id = "storyframe"
 [functions.progress-commit]
 verify_jwt = true
+[functions.progress-import]
+verify_jwt = true

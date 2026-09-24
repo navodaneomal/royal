@@ -21,6 +21,7 @@
     "content:init": "node scripts/ci/content-branch.mjs init",
     "preview": "node scripts/preview.mjs",
     "test": "vitest run",
+    "typecheck": "npm --workspace apps/web run typecheck",
     "verify": "node verify.mjs",
     "doctor": "node packages/story-cli/src/storyframe.mjs doctor",
     "storyframe": "node packages/story-cli/src/storyframe.mjs",
