@@ -105,3 +105,100 @@ export function unionMerge(keep, other) {
   }
   return merged
 }
+
+/* ── state-schema migrations (v2) ───────────────────────────────────── */
+
+/**
+ * Compose the manifest's migration steps into one map from `fromVersion` to
+ * `toVersion`. Steps chain (1→2, 2→3); renames compose (a→b, b→c ⇒ a→c) and
+ * a retirement anywhere in the chain wins. Returns null when no chain exists.
+ */
+export function composeMigrations(migrations, fromVersion, toVersion) {
+  const kinds = ['checkpoints', 'items', 'achievements', 'choices', 'endings']
+  const out = { checkpoints: {}, items: {}, achievements: {}, choices: {}, endings: {}, choiceOptions: {} }
+  let v = fromVersion
+  const steps = []
+  while (v < toVersion) {
+    const candidates = (migrations ?? []).filter((m) => m.from === v && m.to <= toVersion)
+    if (!candidates.length) return null
+    const step = candidates.sort((a, b) => b.to - a.to)[0]
+    steps.push(step)
+    v = step.to
+  }
+  const resolve = (map, id) => (Object.prototype.hasOwnProperty.call(map, id) ? map[id] : id)
+  for (const step of steps) {
+    for (const kind of kinds) {
+      const stepMap = step[kind] ?? {}
+      // advance every existing mapping through this step
+      for (const [from, to] of Object.entries(out[kind])) {
+        if (to !== null) out[kind][from] = resolve(stepMap, to)
+      }
+      // ids first seen in this step
+      for (const [from, to] of Object.entries(stepMap)) {
+        if (!Object.prototype.hasOwnProperty.call(out[kind], from)) out[kind][from] = to
+      }
+    }
+    for (const [choiceId, options] of Object.entries(step.choiceOptions ?? {})) {
+      out.choiceOptions[choiceId] = { ...(out.choiceOptions[choiceId] ?? {}) }
+      for (const [prev, next] of Object.entries(out.choiceOptions[choiceId])) out.choiceOptions[choiceId][prev] = resolve(options, next)
+      for (const [from, to] of Object.entries(options)) {
+        if (!Object.prototype.hasOwnProperty.call(out.choiceOptions[choiceId], from)) out.choiceOptions[choiceId][from] = to
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * Bring a reader's snapshot up to the release's stateSchemaVersion using the
+ * manifest's migration map. Pure. Reader data is never deleted: renamed IDs
+ * move, retired IDs (null) stay where they are and are simply no longer
+ * referenced. A checkpoint must always land on a real checkpoint.
+ *
+ * @returns {{ok:true, snapshot:object, migrated:boolean, from?:number} | {ok:false, code:string, detail?:string}}
+ */
+export function migrateSnapshot(snapshot, manifest) {
+  const target = manifest.stateSchemaVersion
+  const from = snapshot.stateSchemaVersion
+  if (from === target) return { ok: true, snapshot, migrated: false }
+  if (from > target) return { ok: false, code: 'snapshot_newer_than_release', detail: `snapshot v${from}, release v${target}` }
+
+  const map = composeMigrations(manifest.migrations, from, target)
+  if (!map) return { ok: false, code: 'migration_missing', detail: `no migration path ${from} → ${target}` }
+
+  const rename = (kind, id) => {
+    const m = map[kind]
+    if (!Object.prototype.hasOwnProperty.call(m, id)) return id
+    return m[id] === null ? id : m[id]        // retired: keep the reader's record untouched
+  }
+  const next = structuredClone(snapshot)
+
+  next.checkpointId = rename('checkpoints', next.checkpointId)
+  const cp = manifest.checkpoints.find((c) => c.id === next.checkpointId)
+  if (!cp) return { ok: false, code: 'migration_incomplete', detail: `checkpoint ${snapshot.checkpointId} has no home in v${target}` }
+  next.checkpointOrder = cp.order
+
+  const inventory = {}
+  for (const [itemId, entry] of Object.entries(next.inventory)) {
+    const to = rename('items', itemId)
+    if (inventory[to]) inventory[to].quantity += entry.quantity
+    else inventory[to] = entry
+  }
+  next.inventory = inventory
+  next.achievements = [...new Set(next.achievements.map((a) => rename('achievements', a)))]
+  next.endingIds = [...new Set(next.endingIds.map((e) => rename('endings', e)))]
+
+  const choices = {}
+  for (const [choiceId, option] of Object.entries(next.committedChoices)) {
+    const to = rename('choices', choiceId)
+    const optionMap = map.choiceOptions[choiceId] ?? map.choiceOptions[to] ?? {}
+    // a canonical choice keeps its meaning; only its spelling may change
+    choices[to] = optionMap[option] ?? option
+  }
+  next.committedChoices = choices
+  next.stateSchemaVersion = target
+
+  const validated = SnapshotSchema.safeParse(next)
+  if (!validated.success) return { ok: false, code: 'snapshot_invalid', detail: validated.error.issues[0]?.message }
+  return { ok: true, snapshot: validated.data, migrated: true, from }
+}

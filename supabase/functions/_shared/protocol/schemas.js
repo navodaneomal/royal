@@ -10,8 +10,12 @@
 import { z } from 'zod'
 
 /* ── protocol constants ─────────────────────────────────────────────── */
-export const PROTOCOL_VERSION = '1.0'
-export const SUPPORTED_PROTOCOLS = ['1.0']
+export const PROTOCOL_VERSION = '1.1'                 // newest version this code speaks
+export const SUPPORTED_PROTOCOLS = ['1.0', '1.1']     // 1.1 is additive: notes (§ protocol.md 8)
+const protocolEnum = z.enum(['1.0', '1.1'])
+/** true when `version` supports everything introduced in `feature` */
+export const protocolAtLeast = (version, feature) =>
+  SUPPORTED_PROTOCOLS.indexOf(version) >= SUPPORTED_PROTOCOLS.indexOf(feature)
 export const MAX_MESSAGE_BYTES = 64 * 1024        // §14.5
 export const MAX_SNAPSHOT_BYTES = 256 * 1024      // §15.1
 export const SNAPSHOT_RETENTION = 10              // §15.5 rolling backups
@@ -24,11 +28,33 @@ export const CAPABILITIES = /** @type {const} */ ([
   'choice.commit',
   'ui.fullscreen',
   'ui.share',
+  'notes.write',          // protocol 1.1 — reader notes & bookmarks
 ])
+/** capability → minimum protocol that defines it */
+export const CAPABILITY_MIN_PROTOCOL = { 'notes.write': '1.1' }
+export const MAX_NOTE_CHARS = 2000
 
 const id = z.string().min(1).max(128)
 const semver = z.string().regex(/^\d+\.\d+\.\d+$/, 'semantic version required')
 const checkpointId = z.string().regex(/^[a-z0-9]+(?:[/-][a-z0-9]+)*$/i, 'checkpoint ids are slash/dash slugs')
+const idMap = (nullable) => z.record(nullable ? z.string().min(1).nullable() : z.string().min(1)).default({})
+
+/* A migration rewrites a reader's snapshot from one stateSchemaVersion to a
+   later one when a release renames or retires IDs. Renames move data; a null
+   target retires an ID but never deletes reader data (it simply stops being
+   referenced). Checkpoints can only be renamed — a reader must resume
+   somewhere real. Applied by migrateSnapshot() in reducer.js. */
+export const MigrationSchema = z.object({
+  from: z.number().int().positive(),
+  to: z.number().int().positive(),
+  checkpoints: idMap(false),
+  items: idMap(true),
+  achievements: idMap(true),
+  choices: idMap(true),
+  choiceOptions: z.record(z.record(z.string().min(1))).default({}),
+  endings: idMap(true),
+  note: z.string().max(400).optional(),
+}).refine((m) => m.to > m.from, { message: 'migration "to" must be greater than "from"' })
 
 /* ── manifest: storyframe.v1 (§13.2) ────────────────────────────────── */
 export const ManifestSchema = z.object({
@@ -36,10 +62,13 @@ export const ManifestSchema = z.object({
   storyId: z.string().uuid(),
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   version: semver,
-  protocolVersion: z.enum(['1.0']),
+  protocolVersion: protocolEnum,
   stateSchemaVersion: z.number().int().positive(),
   title: z.string().min(1).max(120),
   tagline: z.string().max(240).optional(),
+  synopsis: z.string().max(1200).optional(),
+  accent: z.string().regex(/^#[0-9a-f]{6}$/i, 'accent is a #rrggbb colour').optional(),
+  cover: z.string().regex(/^[\w./-]+\.(svg|png|webp|jpe?g)$/i, 'cover must be .svg, .png, .webp, or .jpg').default('cover.svg'),
   entrypoint: z.string().min(1),
   languages: z.array(z.string().min(2)).min(1),
   defaultLanguage: z.string().min(2),
@@ -93,6 +122,8 @@ export const ManifestSchema = z.object({
     id: id,
     name: z.string().max(120),
   })).default([]),
+  migrations: z.array(MigrationSchema).default([]),
+  build: z.record(z.unknown()).optional(),      // declarative build block — see packages/publishing/src/build.js
   integrity: z.object({
     generatedAt: z.string(),
     files: z.string(),
@@ -158,7 +189,7 @@ export const MutationSchema = z.object({
 
 /* ── bridge envelope (§14.3) ────────────────────────────────────────── */
 export const EnvelopeSchema = z.object({
-  protocol: z.enum(['1.0']),
+  protocol: protocolEnum,
   type: z.string().min(1).max(64),
   messageId: z.string().uuid(),
   sessionId: z.string().min(8).max(64),
@@ -171,12 +202,20 @@ export const EnvelopeSchema = z.object({
 
 export const HelloSchema = z.object({
   type: z.literal('STORYFRAME_HELLO'),
-  protocol: z.enum(['1.0']),
+  protocol: protocolEnum,
   storyId: z.string().uuid(),
   releaseId: z.string().min(8).max(64),
   nonce: z.string().min(16).max(128),
   sdkVersion: z.string().max(32).optional(),
+  // 1.1+: versions the SDK can speak; unknown future versions are ignored
+  accepts: z.array(z.string().max(8)).max(8).optional(),
 })
+
+/** Highest protocol both sides speak. A 1.0 SDK sends no `accepts`. */
+export function negotiateProtocol(hello) {
+  const offered = [hello.protocol, ...(hello.accepts ?? [])].filter((v) => SUPPORTED_PROTOCOLS.includes(v))
+  return offered.sort((a, b) => SUPPORTED_PROTOCOLS.indexOf(b) - SUPPORTED_PROTOCOLS.indexOf(a))[0] ?? null
+}
 
 export const MESSAGE_TYPES = /** @type {const} */ ({
   READY: 'READY',
@@ -188,6 +227,18 @@ export const MESSAGE_TYPES = /** @type {const} */ ({
   PREFERENCES_CHANGED: 'PREFERENCES_CHANGED',
   LIFECYCLE: 'LIFECYCLE',
   ERROR: 'ERROR',
+  NOTE_ADD: 'NOTE_ADD',          // 1.1
+  NOTE_ACK: 'NOTE_ACK',          // 1.1
+})
+
+/* protocol 1.1 — a reader note or bookmark anchored to a story-defined
+   place. Text is the reader's own words and never leaves the device in the
+   local data plane. */
+export const NoteAddPayload = z.object({
+  anchorId: z.string().min(1).max(128),
+  text: z.string().max(MAX_NOTE_CHARS).default(''),
+  kind: z.enum(['note', 'bookmark']).default('note'),
+  label: z.string().max(160).optional(),       // story-language label for the anchor
 })
 
 export const ProgressCommitPayload = z.object({
@@ -211,5 +262,6 @@ export function validateEnvelope(raw, { expect }) {
   if (expect.storyId && env.storyId !== expect.storyId) return { ok: false, code: 'story_mismatch' }
   if (expect.releaseId && env.releaseId !== expect.releaseId) return { ok: false, code: 'release_mismatch' }
   if (expect.sessionId && env.sessionId !== expect.sessionId) return { ok: false, code: 'session_mismatch' }
+  if (expect.protocol && env.protocol !== expect.protocol) return { ok: false, code: 'protocol_mismatch' }
   return { ok: true, envelope: env }
 }

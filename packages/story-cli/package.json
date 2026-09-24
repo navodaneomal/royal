@@ -1,6 +1,10 @@
 {
   "name": "@storyframe/story-cli",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "bin": { "storyframe": "src/storyframe.mjs" }
+  "bin": { "storyframe": "src/storyframe.mjs" },
+  "dependencies": {
+    "@storyframe/protocol": "*",
+    "@storyframe/publishing": "*"
+  }
 }

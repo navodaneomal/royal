@@ -14,8 +14,8 @@
  * The host never sends tokens or credentials into the frame in either mode.
  */
 import {
-  HelloSchema, validateEnvelope, byteLength,
-  MAX_MESSAGE_BYTES, ProgressCommitPayload, UiRequestPayload, PreferencesSchema,
+  HelloSchema, validateEnvelope, byteLength, negotiateProtocol,
+  MAX_MESSAGE_BYTES, ProgressCommitPayload, UiRequestPayload, PreferencesSchema, NoteAddPayload,
 } from '@storyframe/protocol'
 
 const RATE_WINDOW_MS = 1000
@@ -39,7 +39,10 @@ export function randomNonce() {
  * @param {object} options.callbacks            host services the story may reach
  *   onCommit(payload) -> Promise<ack payload>       (validated, capability-checked here first)
  *   onUiRequest(payload) -> Promise<ack payload>
+ *   onNote(payload) -> Promise<{ noteId }>          protocol 1.1 + `notes.write` only
  *   onEvent(name, data)                             telemetry/diagnostics hook
+ *   onTrace(direction, message)                     host-side message log (Admin preview);
+ *                                                   never reaches the story
  * @param {object} options.bootstrap            { preferences, progress, revision, resume }
  */
 export function createStoryBridge({ iframe, mode, src, release, callbacks, bootstrap }) {
@@ -49,6 +52,7 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
   const granted = new Set(release.capabilities)
 
   let port = null
+  let protocol = '1.0'              // negotiated at hello time
   let hostSequence = 0
   let lastStorySequence = -1
   let invalidCount = 0
@@ -58,16 +62,22 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
 
   const diagnosticId = 'sf-' + Math.random().toString(36).slice(2, 10)
   const emit = (name, data) => { try { callbacks.onEvent?.(name, { ...data, sessionId, diagnosticId }) } catch { /* diagnostics never break play */ } }
+  const trace = (dir, msg) => { try { callbacks.onTrace?.(dir, msg) } catch { /* tracing never breaks play */ } }
   const setStatus = (s, extra) => listeners.status.forEach((fn) => fn(s, extra))
 
   function envelope(type, payload) {
     return {
-      protocol: '1.0', type, messageId: crypto.randomUUID(), sessionId,
+      protocol, type, messageId: crypto.randomUUID(), sessionId,
       storyId: release.storyId, releaseId: release.releaseId,
       sequence: hostSequence++, sentAt: new Date().toISOString(), payload,
     }
   }
-  const post = (type, payload) => { if (port && !closed) port.postMessage(envelope(type, payload)) }
+  const post = (type, payload) => {
+    if (!port || closed) return
+    const env = envelope(type, payload)
+    trace('out', env)
+    port.postMessage(env)
+  }
 
   /* ── the handshake listener ─────────────────────────────────────── */
   function onHello(event) {
@@ -83,6 +93,10 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
     if (hello.data.nonce !== nonce) { emit('bridge_hello_rejected', { code: 'nonce' }); return }
     if (hello.data.storyId !== release.storyId) { emit('bridge_hello_rejected', { code: 'story' }); return }
     if (hello.data.releaseId !== release.releaseId) { emit('bridge_hello_rejected', { code: 'release' }); return }
+    const negotiated = negotiateProtocol(hello.data)
+    if (!negotiated) { emit('bridge_hello_rejected', { code: 'protocol' }); return }
+    protocol = negotiated
+    trace('in', hello.data)
 
     window.removeEventListener('message', onHello)
     const channel = new MessageChannel()
@@ -91,9 +105,10 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
 
     // Welcome: exact origin online; '*' for the opaque frame — and therefore
     // NEVER any reader data in this message. The port carries the rest.
-    const welcome = { type: 'STORYFRAME_WELCOME', nonce, sessionId, protocol: '1.0', capabilities: [...granted] }
+    const welcome = { type: 'STORYFRAME_WELCOME', nonce, sessionId, protocol, capabilities: [...granted] }
     iframe.contentWindow.postMessage(welcome, mode === 'cross-origin-online' ? expectedOrigin : '*', [channel.port2])
-    emit('bridge_ready', { mode })
+    trace('out', { ...welcome, nonce: '•••' })
+    emit('bridge_ready', { mode, protocol })
     setStatus('connected')
   }
 
@@ -113,10 +128,11 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
 
     if (byteLength(event.data ?? {}) > MAX_MESSAGE_BYTES) return invalid('oversized')
     const checked = validateEnvelope(event.data, {
-      expect: { storyId: release.storyId, releaseId: release.releaseId, sessionId },
+      expect: { storyId: release.storyId, releaseId: release.releaseId, sessionId, protocol },
     })
     if (!checked.ok) return invalid(checked.code, checked.detail)
     const env = checked.envelope
+    trace('in', env)
 
     if (env.sequence <= lastStorySequence) return invalid('sequence_replay')
     lastStorySequence = env.sequence
@@ -169,6 +185,23 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
         post('UI_ACK', { inReplyTo: env.messageId, ...ack })
         break
       }
+      case 'NOTE_ADD': {
+        // protocol 1.1 — unknown to a 1.0 session, exactly as before
+        if (protocol === '1.0') return invalid('unknown_type', env.type)
+        const payload = NoteAddPayload.safeParse(env.payload)
+        if (!payload.success) return invalid('note_schema', payload.error.issues[0]?.message)
+        if (!granted.has('notes.write') || !callbacks.onNote) {
+          post('ERROR', { inReplyTo: env.messageId, code: 'capability_denied' })
+          return emit('capability_denied', { capability: 'notes.write' })
+        }
+        try {
+          const ack = await callbacks.onNote(payload.data)
+          post('NOTE_ACK', { inReplyTo: env.messageId, status: 'saved', ...ack })
+        } catch (err) {
+          post('ERROR', { inReplyTo: env.messageId, code: 'note_failed' })
+        }
+        break
+      }
       case 'ERROR': emit('story_reported_error', { payload: env.payload }); break
       default: invalid('unknown_type', env.type)
     }
@@ -201,6 +234,7 @@ export function createStoryBridge({ iframe, mode, src, release, callbacks, boots
     sendLifecycle: (event) => post('LIFECYCLE', { event }),
     onStatus: (fn) => { listeners.status.add(fn); return () => listeners.status.delete(fn) },
     get connected() { return !!port && !closed },
+    get protocol() { return protocol },
     _cleanupTimer: handshakeTimer,
   }
 }

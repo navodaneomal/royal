@@ -2,5 +2,20 @@ node_modules
 dist
 *.log
 .DS_Store
+Thumbs.db
+.scratch/
+test-results/
+# build outputs
 stories/*/package/
-infra/story-host/stories-host/packages/
+# the content plane is its own branch (`content`), checked out here by CI
+infra/story-host/stories-host/
+# generated deploy bundles (npm run deploy:bundle)
+deploy/app/
+deploy/stories/
+deploy/single-origin/
+deploy/*.zip
+storyframe-v2.zip
+# Capacitor native project output
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/www/

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.storyframe.example/storyframe.v1.json",
+  "$schema": "https://storyframe.dev/schemas/storyframe.v1.json",
   "storyId": "6f9f2c6a-3d5e-4b1c-9a52-1f4be8a30d17",
   "slug": "the-tulip-and-the-jester",
   "version": "1.0.0",
@@ -8,13 +8,29 @@
   "title": "The Tulip & The Jester",
   "tagline": "A story that was never meant to be remembered.",
   "entrypoint": "index.html",
-  "languages": ["en"],
+  "cover": "cover.svg",
+  "languages": [
+    "en"
+  ],
   "defaultLanguage": "en",
-  "capabilities": ["progress.write", "inventory.write", "achievement.unlock"],
+  "capabilities": [
+    "progress.write",
+    "inventory.write",
+    "achievement.unlock"
+  ],
   "content": {
     "rating": "teen",
-    "warnings": ["grief", "historical injustice"],
-    "estimatedMinutes": { "firstSession": 20, "total": [90, 150] }
+    "warnings": [
+      "grief",
+      "historical injustice"
+    ],
+    "estimatedMinutes": {
+      "firstSession": 20,
+      "total": [
+        90,
+        150
+      ]
+    }
   },
   "accessibility": {
     "keyboard": true,
@@ -26,37 +42,164 @@
   },
   "offline": {
     "eligible": true,
-    "required": ["index.html"],
+    "required": [
+      "index.html"
+    ],
     "optional": [],
     "maxBytes": 2097152
   },
   "checkpoints": [
-    { "id": "part-1", "label": "Part I — The Birthday", "order": 10 },
-    { "id": "part-2", "label": "Part II — The Jester Stays", "order": 20 },
-    { "id": "part-3", "label": "Part III — The Garden of Tulips", "order": 30 },
-    { "id": "part-4", "label": "Part IV — The Masked Night", "order": 40 },
-    { "id": "part-5", "label": "Part V — Beyond the Palace", "order": 50 },
-    { "id": "part-6", "label": "Part VI — The Letter", "order": 60 },
-    { "id": "part-7", "label": "Part VII — The Falling Kingdom", "order": 70 },
-    { "id": "part-8", "label": "Part VIII — The Last Tulip", "order": 80 },
-    { "id": "part-9", "label": "Part IX — The Truth", "order": 90 },
-    { "id": "part-10", "label": "Part X — The Last Dance", "order": 100 },
-    { "id": "final", "label": "The names have been said", "order": 110 }
+    {
+      "id": "part-1",
+      "label": "Part I — The Birthday",
+      "order": 10
+    },
+    {
+      "id": "part-2",
+      "label": "Part II — The Jester Stays",
+      "order": 20
+    },
+    {
+      "id": "part-3",
+      "label": "Part III — The Garden of Tulips",
+      "order": 30
+    },
+    {
+      "id": "part-4",
+      "label": "Part IV — The Masked Night",
+      "order": 40
+    },
+    {
+      "id": "part-5",
+      "label": "Part V — Beyond the Palace",
+      "order": 50
+    },
+    {
+      "id": "part-6",
+      "label": "Part VI — The Letter",
+      "order": 60
+    },
+    {
+      "id": "part-7",
+      "label": "Part VII — The Falling Kingdom",
+      "order": 70
+    },
+    {
+      "id": "part-8",
+      "label": "Part VIII — The Last Tulip",
+      "order": 80
+    },
+    {
+      "id": "part-9",
+      "label": "Part IX — The Truth",
+      "order": 90
+    },
+    {
+      "id": "part-10",
+      "label": "Part X — The Last Dance",
+      "order": 100
+    },
+    {
+      "id": "final",
+      "label": "The names have been said",
+      "order": 110
+    }
   ],
   "items": [
-    { "id": "candle", "name": "The candle", "alt": "A single lit candle with a steady flame", "description": "A candle is a clock that only runs once.", "spoilerCheckpoint": "part-1" },
-    { "id": "part-1:3", "name": "The two hundred and seventh gift", "alt": "A plain red clay pot, chipped at the rim", "description": "Counted twice by a man of sixty-three, at four in the morning.", "spoilerCheckpoint": "part-1" },
-    { "id": "part-4:2", "name": "The wolf's head", "alt": "A carnival wolf mask resting on black silk", "description": "Half past midnight, during the fourth figure.", "spoilerCheckpoint": "part-4" },
-    { "id": "part-5:3", "name": "Why she knew the name Toussaint", "alt": "Two water pails set down in an inn yard", "description": "Somewhere around the tenth mile, and then it went out of her head.", "spoilerCheckpoint": "part-5" },
-    { "id": "part-7:2", "name": "Eleven sous and a coat", "alt": "A worn wool coat folded over a fairground bench", "description": "The fair of Saint-Germain, March 1750.", "spoilerCheckpoint": "part-7" },
-    { "id": "garden:41", "name": "Bed forty-one", "alt": "A single white tulip against a brick wall", "description": "Against the wall, in the corner, in the shade after four o'clock.", "spoilerCheckpoint": "part-3" },
-    { "id": "part-10:4", "name": "Personne", "alt": "A page of handwriting with one word underlined", "description": "French. Meaning: nobody. Also: a person.", "spoilerCheckpoint": "part-10" }
+    {
+      "id": "candle",
+      "name": "The candle",
+      "alt": "A single lit candle with a steady flame",
+      "description": "A candle is a clock that only runs once.",
+      "spoilerCheckpoint": "part-1"
+    },
+    {
+      "id": "part-1:3",
+      "name": "The two hundred and seventh gift",
+      "alt": "A plain red clay pot, chipped at the rim",
+      "description": "Counted twice by a man of sixty-three, at four in the morning.",
+      "spoilerCheckpoint": "part-1"
+    },
+    {
+      "id": "part-4:2",
+      "name": "The wolf's head",
+      "alt": "A carnival wolf mask resting on black silk",
+      "description": "Half past midnight, during the fourth figure.",
+      "spoilerCheckpoint": "part-4"
+    },
+    {
+      "id": "part-5:3",
+      "name": "Why she knew the name Toussaint",
+      "alt": "Two water pails set down in an inn yard",
+      "description": "Somewhere around the tenth mile, and then it went out of her head.",
+      "spoilerCheckpoint": "part-5"
+    },
+    {
+      "id": "part-7:2",
+      "name": "Eleven sous and a coat",
+      "alt": "A worn wool coat folded over a fairground bench",
+      "description": "The fair of Saint-Germain, March 1750.",
+      "spoilerCheckpoint": "part-7"
+    },
+    {
+      "id": "garden:41",
+      "name": "Bed forty-one",
+      "alt": "A single white tulip against a brick wall",
+      "description": "Against the wall, in the corner, in the shade after four o'clock.",
+      "spoilerCheckpoint": "part-3"
+    },
+    {
+      "id": "part-10:4",
+      "name": "Personne",
+      "alt": "A page of handwriting with one word underlined",
+      "description": "French. Meaning: nobody. Also: a person.",
+      "spoilerCheckpoint": "part-10"
+    }
   ],
   "achievements": [
-    { "id": "the-whole-house", "name": "The Whole House", "description": "Read all ten parts.", "secret": false },
-    { "id": "every-hidden-thing", "name": "Every Hidden Thing", "description": "Find all seven secrets.", "secret": true },
-    { "id": "say-them-out-loud", "name": "Say Them Out Loud", "description": "Say all forty-one names on the final page.", "secret": false }
+    {
+      "id": "the-whole-house",
+      "name": "The Whole House",
+      "description": "Read all ten parts.",
+      "secret": false
+    },
+    {
+      "id": "every-hidden-thing",
+      "name": "Every Hidden Thing",
+      "description": "Find all seven secrets.",
+      "secret": true
+    },
+    {
+      "id": "say-them-out-loud",
+      "name": "Say Them Out Loud",
+      "description": "Say all forty-one names on the final page.",
+      "secret": false
+    }
   ],
   "choices": [],
-  "endings": [{ "id": "the-final-page", "name": "The Final Page" }]
+  "endings": [
+    {
+      "id": "the-final-page",
+      "name": "The Final Page"
+    }
+  ],
+  "synopsis": "France, 1750. A queen who is never called by her name, a jester called Nobody, and a garden of forty-one tulips that are not flowers. Ten parts, seven hidden things, and a last page that asks you to say the names out loud.",
+  "accent": "#c2a15f",
+  "migrations": [],
+  "build": {
+    "concat": [
+      "src/00-head.html",
+      "src/10-body.html",
+      "@sdk",
+      "src/45-storyframe-glue.js",
+      "src/20-story-a.js",
+      "src/21-story-b.js",
+      "src/22-story-c.js",
+      "src/23-story-d.js",
+      "src/30-world.js",
+      "src/40-art.js",
+      "src/50-app.js"
+    ],
+    "stripExternalFonts": true
+  }
 }

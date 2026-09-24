@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3c9a8"/><stop offset=".55" stop-color="#f7e3cf"/><stop offset="1" stop-color="#cfe2ee"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb0cc"/><stop offset="1" stop-color="#2f6f8f"/></linearGradient>
+    <radialGradient id="beam"><stop offset="0" stop-color="#fff4c2" stop-opacity=".95"/><stop offset="1" stop-color="#fff4c2" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <path d="M416 118 L640 70 L640 150 Z" fill="#fff4c2" opacity=".55"/>
+  <circle cx="416" cy="118" r="46" fill="url(#beam)"/>
+  <rect y="248" width="640" height="112" fill="url(#sea)"/>
+  <path d="M0 262c40-6 80 6 120 0s80-6 120 0 80 6 120 0 80-6 120 0 80 6 160 0" fill="none" stroke="#e8f4fb" stroke-opacity=".6" stroke-width="2"/>
+  <path d="M250 262c60-30 170-34 260-6l40 20H230z" fill="#5b6b5a"/>
+  <path d="M398 250 404 138h24l6 112z" fill="#fbfaf7"/>
+  <path d="M400 214h32M401 186h30M402 160h28" stroke="#2f6f8f" stroke-width="6"/>
+  <rect x="402" y="104" width="28" height="34" rx="3" fill="#fff0b3" stroke="#3a4a55" stroke-width="3"/>
+  <path d="M398 104l18-18 18 18z" fill="#b4554b"/>
+  <path d="M140 110q8-6 16 0q8-6 16 0M190 80q6-5 12 0q6-5 12 0M520 180q6-5 12 0q6-5 12 0" fill="none" stroke="#3a4a55" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

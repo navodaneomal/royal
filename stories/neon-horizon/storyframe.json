@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.storyframe.example/storyframe.v1.json",
+  "$schema": "https://storyframe.dev/schemas/storyframe.v1.json",
   "storyId": "2b4dfd0e-91c8-45c0-8a3e-6f0a5cf6f2aa",
   "slug": "neon-horizon",
   "version": "1.0.0",
@@ -8,13 +8,29 @@
   "title": "Neon Horizon",
   "tagline": "A dead relay station. A live signal.",
   "entrypoint": "index.html",
-  "languages": ["en"],
+  "cover": "cover.svg",
+  "languages": [
+    "en"
+  ],
   "defaultLanguage": "en",
-  "capabilities": ["progress.write", "inventory.write", "achievement.unlock", "choice.commit"],
+  "capabilities": [
+    "progress.write",
+    "inventory.write",
+    "achievement.unlock",
+    "choice.commit"
+  ],
   "content": {
     "rating": "everyone",
-    "warnings": ["isolation"],
-    "estimatedMinutes": { "firstSession": 8, "total": [10, 20] }
+    "warnings": [
+      "isolation"
+    ],
+    "estimatedMinutes": {
+      "firstSession": 8,
+      "total": [
+        10,
+        20
+      ]
+    }
   },
   "accessibility": {
     "keyboard": true,
@@ -26,29 +42,88 @@
   },
   "offline": {
     "eligible": true,
-    "required": ["index.html"],
+    "required": [
+      "index.html"
+    ],
     "optional": [],
     "maxBytes": 524288
   },
   "checkpoints": [
-    { "id": "boot", "label": "Docking, in the dark", "order": 10 },
-    { "id": "hall", "label": "The relay hall", "order": 20 },
-    { "id": "aligned", "label": "The old band, open", "order": 30 },
-    { "id": "decided", "label": "The call, made", "order": 40 }
+    {
+      "id": "boot",
+      "label": "Docking, in the dark",
+      "order": 10
+    },
+    {
+      "id": "hall",
+      "label": "The relay hall",
+      "order": 20
+    },
+    {
+      "id": "aligned",
+      "label": "The old band, open",
+      "order": 30
+    },
+    {
+      "id": "decided",
+      "label": "The call, made",
+      "order": 40
+    }
   ],
   "items": [
-    { "id": "logbook-page", "name": "Logbook page", "alt": "A torn logbook page with three circled entries", "description": "Seven tenths. Four dishes. One operator.", "spoilerCheckpoint": "hall" },
-    { "id": "coil", "name": "The transmission coil", "alt": "A copper coil, bright and fragile", "description": "Good for exactly one full transmission.", "spoilerCheckpoint": "aligned" }
+    {
+      "id": "logbook-page",
+      "name": "Logbook page",
+      "alt": "A torn logbook page with three circled entries",
+      "description": "Seven tenths. Four dishes. One operator.",
+      "spoilerCheckpoint": "hall"
+    },
+    {
+      "id": "coil",
+      "name": "The transmission coil",
+      "alt": "A copper coil, bright and fragile",
+      "description": "Good for exactly one full transmission.",
+      "spoilerCheckpoint": "aligned"
+    }
   ],
   "achievements": [
-    { "id": "clean-signal", "name": "Clean Signal", "description": "Open the band without a single hint.", "secret": false },
-    { "id": "listener", "name": "A Patient Ear", "description": "Listen three times before the band opens.", "secret": true }
+    {
+      "id": "clean-signal",
+      "name": "Clean Signal",
+      "description": "Open the band without a single hint.",
+      "secret": false
+    },
+    {
+      "id": "listener",
+      "name": "A Patient Ear",
+      "description": "Listen three times before the band opens.",
+      "secret": true
+    }
   ],
   "choices": [
-    { "id": "final-call", "label": "Burn the coil, or keep the light on", "options": ["transmit", "stay"] }
+    {
+      "id": "final-call",
+      "label": "Burn the coil, or keep the light on",
+      "options": [
+        "transmit",
+        "stay"
+      ]
+    }
   ],
   "endings": [
-    { "id": "signal-sent", "name": "The Signal, Sent" },
-    { "id": "kept-company", "name": "Kept Company" }
-  ]
+    {
+      "id": "signal-sent",
+      "name": "The Signal, Sent"
+    },
+    {
+      "id": "kept-company",
+      "name": "Kept Company"
+    }
+  ],
+  "synopsis": "Eleven years after the last crew left, relay station K-19 is still counting. Dock, listen, piece together what the logbook remembers, and decide what the last working coil is for. A short, untimed puzzle story told entirely through a maintenance console.",
+  "accent": "#59f7a6",
+  "migrations": [],
+  "build": {
+    "entry": "src/index.html"
+  }
 }

@@ -16,7 +16,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 // The reducer is the same file the app and CLI use — one contract.
-import { applyMutation, buildRegistry, emptySnapshot } from '../_shared/protocol/reducer.js'
+import { applyMutation, buildRegistry, emptySnapshot, migrateSnapshot } from '../_shared/protocol/reducer.js'
 import { ManifestSchema, ProgressCommitPayload } from '../_shared/protocol/schemas.js'
 
 const SNAPSHOT_RETENTION = 10
@@ -79,7 +79,15 @@ Deno.serve(async (req) => {
     const { data: progress } = await admin.from('reader_progress')
       .select('revision, snapshot').eq('timeline_id', timelineId).maybeSingle()
     const currentRevision = progress?.revision ?? 0
-    const currentSnapshot = progress?.snapshot ?? emptySnapshot(manifest)
+    let currentSnapshot = progress?.snapshot ?? emptySnapshot(manifest)
+
+    // 6b. a reader resuming on a newer release: apply the manifest's
+    //     migration map (same function the app runs locally)
+    if (currentSnapshot.stateSchemaVersion !== manifest.stateSchemaVersion) {
+      const migrated = migrateSnapshot(currentSnapshot, manifest)
+      if (!migrated.ok) return json(409, { operationId, status: 'rejected', code: migrated.code, detail: migrated.detail })
+      currentSnapshot = migrated.snapshot
+    }
 
     // 7. conflict check before any write (§35)
     if (baseRevision !== currentRevision) {

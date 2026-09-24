@@ -12,7 +12,10 @@
  * sensitive in the wildcard hello (§14.1 opaque mode).
  */
 
-const PROTOCOL = '1.0'
+const PROTOCOL = '1.1'                 // newest this SDK speaks
+const BASE_PROTOCOL = '1.0'            // what every host accepts in a hello
+const ACCEPTS = ['1.0', '1.1']
+const SDK_VERSION = '1.1.0'
 const HANDSHAKE_TIMEOUT_MS = 4000
 const ACK_TIMEOUT_MS = 8000
 
@@ -53,19 +56,23 @@ function framedSession({ storyId, releaseId, nonce }) {
       if (!event.ports || !event.ports[0]) return
       clearTimeout(timer)
       window.removeEventListener('message', onWelcome)
-      resolve(makePortApi({ port: event.ports[0], storyId, releaseId, sessionId: d.sessionId, capabilities: d.capabilities ?? [] }))
+      // the host picks the version; a 1.0 host answers '1.0' and never sees `accepts`
+      const protocol = ACCEPTS.includes(d.protocol) ? d.protocol : BASE_PROTOCOL
+      resolve(makePortApi({ port: event.ports[0], storyId, releaseId, sessionId: d.sessionId, capabilities: d.capabilities ?? [], protocol }))
     }
     window.addEventListener('message', onWelcome)
 
     // The hello carries identity + nonce only — never state, never credentials.
+    // Version negotiation: `protocol` stays at the base version every host
+    // accepts; `accepts` offers newer ones (ignored by 1.0 hosts).
     window.parent.postMessage(
-      { type: 'STORYFRAME_HELLO', protocol: PROTOCOL, storyId, releaseId, nonce, sdkVersion: '1.0.0' },
+      { type: 'STORYFRAME_HELLO', protocol: BASE_PROTOCOL, accepts: ACCEPTS, storyId, releaseId, nonce, sdkVersion: SDK_VERSION },
       '*',
     )
   })
 }
 
-function makePortApi({ port, storyId, releaseId, sessionId, capabilities }) {
+function makePortApi({ port, storyId, releaseId, sessionId, capabilities, protocol }) {
   let sequence = 0
   let revision = 0
   let bootstrapResolve
@@ -77,7 +84,7 @@ function makePortApi({ port, storyId, releaseId, sessionId, capabilities }) {
 
   function envelope(type, payload) {
     return {
-      protocol: PROTOCOL, type, messageId: uuid(), sessionId, storyId, releaseId,
+      protocol, type, messageId: uuid(), sessionId, storyId, releaseId,
       sequence: sequence++, sentAt: new Date().toISOString(), payload,
     }
   }
@@ -108,6 +115,7 @@ function makePortApi({ port, storyId, releaseId, sessionId, capabilities }) {
         break
       }
       case 'PROGRESS_ACK':
+      case 'NOTE_ACK':
       case 'UI_ACK': {
         const inReplyTo = env.payload?.inReplyTo
         const waiter = inReplyTo && pending.get(inReplyTo)
@@ -134,6 +142,7 @@ function makePortApi({ port, storyId, releaseId, sessionId, capabilities }) {
   const api = {
     mode: 'framed',
     sessionId,
+    protocol,
     capabilities,
     get revision() { return revision },
     async ready() {
@@ -163,6 +172,17 @@ function makePortApi({ port, storyId, releaseId, sessionId, capabilities }) {
     lifecycle: { on: (event, fn) => lifecycle.on(event, fn) },
     close() { closed = true; try { port.close() } catch { /* already closed */ } },
   }
+  // protocol 1.1: reader notes & bookmarks. Present only when the host
+  // negotiated 1.1; the host still refuses it without `notes.write`.
+  if (protocol === '1.1') {
+    api.notes = {
+      /** @param {{ anchorId:string, text?:string, kind?:'note'|'bookmark', label?:string }} note */
+      add(note) {
+        if (!capabilities.includes('notes.write')) return Promise.reject(new Error('capability_denied'))
+        return request('NOTE_ADD', note)
+      },
+    }
+  }
   return api
 }
 
@@ -174,10 +194,15 @@ function standaloneSession({ storyId, releaseId }) {
   let snapshot = null
   const mem = { achievements: new Set(), inventory: {} }
 
+  const notes = []
   return {
     mode: 'standalone',
     sessionId: 'standalone-' + uuid().slice(0, 8),
-    capabilities: ['progress.read', 'progress.write', 'inventory.write', 'achievement.unlock', 'choice.commit'],
+    protocol: PROTOCOL,
+    capabilities: ['progress.read', 'progress.write', 'inventory.write', 'achievement.unlock', 'choice.commit', 'notes.write'],
+    notes: {
+      async add(note) { notes.push(note); console.info('[storyframe standalone note]', note); return { status: 'saved', noteId: 'standalone-' + notes.length } },
+    },
     get revision() { return revision },
     async ready() {
       return {
@@ -214,6 +239,7 @@ function standaloneSession({ storyId, releaseId }) {
 /* ── public entry ───────────────────────────────────────────────────── */
 export const Storyframe = {
   protocol: PROTOCOL,
+  version: SDK_VERSION,
   /**
    * Connect to the host if framed with a nonce; otherwise return a
    * standalone in-memory host so the story runs on its own.

@@ -3,8 +3,7 @@
    security posture: every story in an OPAQUE sandbox). Covers the P0 gates:
    launch, handshake, atomic saves, resume, conflict UI, offline play,
    hostile-frame isolation, and accessibility basics. Writes screenshots. */
-import pw from '/home/claude/.npm-global/lib/node_modules/playwright/index.js'
-const { chromium } = pw
+import { chromium } from 'playwright'     // devDependency; browsers: npx playwright install chromium
 import { mkdirSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 
@@ -14,7 +13,7 @@ const errors = []
 const note = (s) => console.log('  · ' + s)
 const fail = (s) => { errors.push(s); console.log('  ✗ ' + s) }
 
-const server = spawn('node', ['scripts/preview.mjs'], { stdio: 'ignore' })
+const server = spawn(process.execPath, ['scripts/preview.mjs'], { stdio: 'ignore' })
 await new Promise((r) => setTimeout(r, 1200))
 
 const browser = await chromium.launch()
@@ -33,8 +32,8 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await sleep(600)
   const cards = await page.locator('.story-card').count()
-  if (cards !== 2) fail(`shelf shows ${cards} stories, expected 2`)
-  else note('shelf: both stories on the Living Shelf')
+  if (cards !== 3) fail(`shelf shows ${cards} stories, expected 3`)
+  else note('shelf: all three stories on the Living Shelf')
   await shot('01-shelf')
 
   /* ── 2. neon horizon: launch, handshake, atomic save ─────────────── */
@@ -176,7 +175,7 @@ try {
   /* ── 8. operator console ──────────────────────────────────────────── */
   await page.goto(BASE + '#/operator'); await sleep(700)
   const rows = await page.locator('table.op').first().locator('tbody tr').count()
-  if (rows !== 2) fail('operator catalog rows: ' + rows)
+  if (rows !== 3) fail('operator catalog rows: ' + rows)
   const auditRows = await page.locator('table.op').nth(1).locator('tbody tr').count()
   if (auditRows < 2) fail('audit log not visible in console')
   else note('operator: catalog, health counters, audit log visible')

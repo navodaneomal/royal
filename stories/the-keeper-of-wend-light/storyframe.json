@@ -1,0 +1,26 @@
+{
+  "$schema": "https://storyframe.dev/schemas/storyframe.v1.json",
+  "storyId": "8a023deb-71f0-42f3-a10c-3f1fe93fc840",
+  "slug": "the-keeper-of-wend-light",
+  "version": "1.0.0",
+  "protocolVersion": "1.1",
+  "stateSchemaVersion": 1,
+  "title": "The Keeper of Wend Light",
+  "tagline": "A lighthouse, a storm, and a promise kept by lamplight.",
+  "synopsis": "Mara is fourteen, the keeper has gone to the mainland, and the almanac on the kitchen table says the lamp must never go dark. Then the barometer starts to fall. A short Quick Book in three chapters — written in Markdown, compiled by Storyframe, and the reference example for every directive in docs/BOOK-AUTHORING.md.",
+  "accent": "#1f5f80",
+  "cover": "cover.svg",
+  "entrypoint": "index.html",
+  "languages": ["en"],
+  "defaultLanguage": "en",
+  "content": {
+    "rating": "everyone",
+    "warnings": ["a storm at sea", "a parent away from home"],
+    "estimatedMinutes": { "firstSession": 12, "total": [12, 18] }
+  },
+  "offline": { "eligible": true, "required": ["index.html"], "optional": [], "maxBytes": 1048576 },
+  "migrations": [],
+  "build": {
+    "quickbook": { "source": "book.md", "theme": "watercolor" }
+  }
+}
