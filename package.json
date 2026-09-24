@@ -16,6 +16,9 @@
     "dev": "npm run stories:build && npm run stories:publish && node scripts/dev.mjs",
     "prebuild": "npm run stories:build && npm run stories:publish",
     "build": "npm --workspace apps/web run build && node scripts/copy-host-into-dist.mjs",
+    "build:app": "npm run sdk:build && npm --workspace apps/web run build",
+    "deploy:bundle": "npm run build && node scripts/deploy-bundle.mjs --zip",
+    "content:init": "node scripts/ci/content-branch.mjs init",
     "preview": "node scripts/preview.mjs",
     "test": "vitest run",
     "verify": "node verify.mjs",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
+    "fflate": "^0.8.3",
     "playwright": "1.56.1",
     "vitest": "^2.1.8"
   },

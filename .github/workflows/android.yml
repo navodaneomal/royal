@@ -1,0 +1,43 @@
+# Debug APK for sideloading (free). Store releases need paid accounts —
+# see DEPLOY.md §Android. Run manually or by pushing a tag like app-v2.0.0.
+name: android
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['app-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm run build:app
+      - name: Runtime config for the APK
+        run: >-
+          node scripts/deploy-bundle.mjs --only app
+          --app-origin "https://localhost" --stories-origin "${{ vars.STORIES_ORIGIN }}"
+          --repo "${{ github.repository }}"
+      - name: Sync web assets into the Android project
+        run: npm --workspace apps/mobile run sync
+      - name: Build debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: storyframe-debug-apk
+          path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30

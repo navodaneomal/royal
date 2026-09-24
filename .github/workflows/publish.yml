@@ -1,0 +1,106 @@
+# Content plane: build → validate → publish/promote/rollback/disable/enable →
+# commit to the `content` branch → deploy the stories project (ADR-0005).
+# Triggered by a push that touches stories/** (the Admin Studio's publish
+# commit) or by workflow_dispatch (the Admin Studio's operator buttons).
+name: publish
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+      && format('{0} {1} [{2}]', inputs.action, inputs.slug || 'changed', inputs.request_id || 'manual')
+      || github.event.head_commit.message }}
+
+on:
+  push:
+    branches: [main]
+    paths: ['stories/**']
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do
+        type: choice
+        options: [publish, promote, rollback, disable, enable, redeploy]
+        default: publish
+      slug:
+        description: Story slug (publish — empty means every story changed in the last push; all on first run)
+        required: false
+        default: ''
+      release_id:
+        description: Release to promote (empty — whatever beta points at)
+        required: false
+        default: ''
+      channel:
+        description: Channel (publish defaults to beta, the rest to production)
+        required: false
+        default: ''
+      request_id:
+        description: Correlation id set by the Admin Studio
+        required: false
+        default: ''
+
+# one content writer at a time — releases and the audit log are append-only
+concurrency:
+  group: storyframe-content
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      STORYFRAME_ACTOR: ${{ github.actor }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run sdk:build
+
+      - name: Check out the content branch (immutable releases live there)
+        run: node scripts/ci/content-branch.mjs checkout
+
+      - name: Run the Storyframe CLI
+        id: content
+        env:
+          SF_ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'publish' }}
+          SF_SLUG: ${{ inputs.slug }}
+          SF_RELEASE: ${{ inputs.release_id }}
+          SF_CHANNEL: ${{ inputs.channel }}
+          SF_BEFORE: ${{ github.event.before }}
+        run: node scripts/ci/content.mjs
+
+      - name: Commit the content branch
+        if: steps.content.outputs.changed == 'true'
+        run: >-
+          node scripts/ci/content-branch.mjs commit
+          "content: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'publish' }}
+          ${{ inputs.slug }} by ${{ github.actor }} (run ${{ github.run_number }})"
+
+      - name: Install a browser for PNG share cards
+        continue-on-error: true
+        run: npx playwright install chromium
+
+      - name: Build the stories bundle (_headers + share cards)
+        run: >-
+          node scripts/deploy-bundle.mjs --only stories
+          --app-origin "${{ vars.APP_ORIGIN }}" --stories-origin "${{ vars.STORIES_ORIGIN }}"
+
+      - name: Deploy to Cloudflare Pages (stories project)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.STORIES_PROJECT }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$PROJECT" ]; then
+            echo "::notice::Cloudflare secrets or STORIES_PROJECT variable not set — content committed, not deployed (DEPLOY.md step 7)."
+            exit 0
+          fi
+          npx --yes wrangler@4 pages deploy deploy/stories --project-name "$PROJECT" --branch main --commit-dirty=true

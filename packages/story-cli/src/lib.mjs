@@ -130,6 +130,16 @@ export function publishStory(storyDir, { channel = 'beta' } = {}) {
   const p = packStory(storyDir)
   if (!p.ok) return p
   const { manifest, packageHash, releaseId, files, totalBytes } = p
+  // publishing straight to a live channel must clear the same gate as promote
+  if (channel === 'production') {
+    const story = loadRegistry().stories.find((s) => s.storyId === manifest.storyId)
+    const live = story ? channelRelease(story, 'production') : null
+    const liveManifest = live && live.releaseId !== releaseId ? releaseManifest(story.slug, live.releaseId) : null
+    if (liveManifest) {
+      const compat = checkCompatibility(liveManifest, manifest)
+      if (!compat.ok) return { ok: false, errors: compat.blocking.map((b) => `${b.message} — ${b.fix}`), warnings: compat.warnings }
+    }
+  }
   const relDir = join(hostDir(), 'packages', manifest.slug, releaseId)
   const at = now()
   if (!existsSync(relDir)) {

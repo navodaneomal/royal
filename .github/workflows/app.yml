@@ -1,0 +1,55 @@
+# Application plane: test, build, and deploy the app shell to its own
+# Cloudflare Pages project with a runtime config.json (ADR-0008).
+name: app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/app.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: storyframe-app
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build:app
+
+      - name: Bundle (config.json + _headers)
+        run: >-
+          node scripts/deploy-bundle.mjs --only app
+          --app-origin "${{ vars.APP_ORIGIN }}" --stories-origin "${{ vars.STORIES_ORIGIN }}"
+          --repo "${{ github.repository }}"
+          --supabase-url "${{ vars.SUPABASE_URL }}" --supabase-anon-key "${{ vars.SUPABASE_ANON_KEY }}"
+
+      - name: Deploy to Cloudflare Pages (app project)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.APP_PROJECT }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$PROJECT" ]; then
+            echo "::notice::Cloudflare secrets or APP_PROJECT variable not set — built, not deployed (DEPLOY.md step 7)."
+            exit 0
+          fi
+          npx --yes wrangler@4 pages deploy deploy/app --project-name "$PROJECT" --branch main --commit-dirty=true
