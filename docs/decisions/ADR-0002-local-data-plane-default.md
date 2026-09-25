@@ -31,3 +31,20 @@ never *pretend* to sync.
   it, no document in this repo claims cross-device sync works.
 - Guest→account upgrade paths, magic-link UI, and cross-device conflict UX remain
   future work tracked in STATUS.md.
+
+## v2 update
+
+- Activation is now runtime configuration: `supabaseUrl` + `supabaseAnonKey` in
+  `/config.json` (ADR-0008) switch on the adapter in `apps/web/src/lib/cloud.ts`
+  (magic link with PKCE, lazy-loaded client).
+- Guest → account upgrade and "keep this device" go through a new
+  `progress-import` function and `sf_import_progress` RPC (migration 0004):
+  the account's timeline stays canonical, guest discoveries are union-merged
+  (`planImport` in the shared reducer), and the losing snapshot is archived as
+  its own timeline — never overwritten.
+- Both functions now read release manifests from the public content plane
+  (`STORIES_ORIGIN`). v1 looked them up in `story_versions`, which nothing
+  populated — every commit would have failed with `release_not_approved`.
+- Still true: none of this has been run against a live project in this
+  repository, so `STATUS.md` keeps cloud sync at 📦. The pure decision logic
+  (`planImport`, `unknownSnapshotIds`, `migrateSnapshot`) is unit-tested.

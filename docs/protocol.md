@@ -1,4 +1,4 @@
-# The Storyframe bridge protocol (v1.0)
+# The Storyframe bridge protocol (v1.1 — additive over v1.0)
 
 The only doorway between a story and the platform. Everything in this document is
 enforced by code in `packages/protocol` (schemas + reducer), `packages/bridge-host`
@@ -23,12 +23,28 @@ host                                      story (SDK)
 ────                                      ───────────
 iframe.src = entry#sf_nonce=<128-bit>  →  reads nonce from the fragment
                                        ←  window.parent.postMessage(STORYFRAME_HELLO
-                                            {protocol, storyId, releaseId, nonce}, '*')
+                                            {protocol:'1.0', accepts:['1.0','1.1'],
+                                             storyId, releaseId, nonce}, '*')
 verify: event.source === iframe.contentWindow
         event.origin (exact in online mode)
         schema, nonce equality, story/release match
-STORYFRAME_WELCOME + MessagePort       →  all further traffic on the private port
+negotiate: highest of {protocol} ∪ accepts that the host supports
+STORYFRAME_WELCOME {protocol:<negotiated>} + MessagePort → all further traffic on the port
 ```
+
+### Version negotiation (1.1)
+
+The hello's `protocol` stays at the base version every host understands
+(`1.0`); newer versions are *offered* in `accepts`. The host answers with the
+highest common version in the welcome, and from then on **every envelope in
+both directions must carry exactly that version** — a mismatch is rejected as
+`protocol_mismatch`. Consequences:
+
+| SDK | host | session |
+|---|---|---|
+| 1.0 (no `accepts`) | 1.1 | 1.0 — plays exactly as before |
+| 1.1 | 1.1 | 1.1 — `session.notes` available (with `notes.write`) |
+| 1.1 | 1.0 (stale cached app) | 1.0 — the 1.0 host ignores `accepts`; `session.notes` is absent |
 
 - The nonce is unguessable, present only in the URL fragment (never sent to servers),
   and single-use. A hello with the wrong source, origin, schema, nonce, storyId, or
@@ -70,6 +86,8 @@ rejected). Ten invalid messages close the bridge with a diagnostic ID.
 | story → host | `UI_REQUEST` | `exit` · `toast` · `fullscreen` · `report_issue` |
 | host → story | `PREFERENCES_CHANGED` | the live preference profile, applied immediately |
 | host → story | `LIFECYCLE` | `pause` · `resume` · `closing` |
+| story → host | `NOTE_ADD` *(1.1)* | `{ anchorId, text ≤ 2000, kind: note\|bookmark, label? }` |
+| host → story | `NOTE_ACK` *(1.1)* | `{ inReplyTo, status: 'saved', noteId }` |
 
 ## 5. The mutation grammar
 
@@ -104,10 +122,32 @@ Reducer guarantees (unit-tested):
 
 ## 6. Capabilities
 
-The manifest declares what a story may do (`progress.write`, `inventory.write`,
-`achievement.unlock`, `choice.commit`, `audio.play`, `fullscreen.request`).
-The host checks each mutation part against the declared list; undeclared parts are
-refused per-message (`capability_denied`) without closing the bridge.
+The manifest declares what a story may do: `progress.read`, `progress.write`,
+`inventory.write`, `achievement.unlock`, `choice.commit`, `ui.fullscreen`,
+`ui.share`, and — protocol 1.1 — `notes.write`. The host checks each mutation
+part (and each note) against the declared list; undeclared parts are refused
+per-message (`capability_denied`) without closing the bridge. The validator
+refuses a manifest that declares a capability newer than its
+`protocolVersion`.
+
+In a **1.0 session**, `NOTE_ADD` is simply an unknown message type (counted as
+invalid, exactly as before). In a **1.1 session without `notes.write`**, it is
+refused per message.
+
+SDK (1.1): `session.protocol` is the negotiated version; `session.notes.add({
+anchorId, text, kind, label })` exists only in a 1.1 session and resolves with
+the ack. Notes are the reader's own words: the local data plane keeps them on
+the device, and they are included in "Export my data".
+
+## 6b. Migrations on resume (v2)
+
+A release may rename or retire IDs only with a `stateSchemaVersion` bump and a
+`migrations` entry (`{ from, to, checkpoints, items, achievements, choices,
+choiceOptions, endings }`). When a reader's snapshot is older than the
+release, the shell applies `migrateSnapshot` (shared reducer) **before**
+bootstrap and stores the result as a new revision; the story only ever sees a
+snapshot in its own vocabulary. Promotion is blocked by the compatibility
+checker until the map covers every removed ID (ADR-0011).
 
 ## 7. Sizes and limits
 
@@ -118,3 +158,4 @@ refused per-message (`capability_denied`) without closing the bridge.
 | snapshot backups kept | 10 per timeline |
 | messages per second | 60 |
 | invalid messages before close | 10 |
+| note text (1.1) | 2,000 characters |

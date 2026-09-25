@@ -4,14 +4,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#F5F1E8" />
-  <meta name="description" content="Storyframe — the invisible continuity layer beneath radically different interactive worlds." />
+  <meta name="theme-color" content="#F5F1E8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#191612" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="Storyframe — one library, one reading profile, and one continuous memory across radically different interactive stories." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Storyframe" />
+  <meta property="og:title" content="Storyframe" />
+  <meta property="og:description" content="Interactive stories with their own worlds — and one memory of your journey through all of them." />
+  <meta property="og:image" content="/icon-512.png" />
   <title>Storyframe</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 <body>
   <div id="root"></div>
+  <noscript><p style="font-family:Georgia,serif;padding:2rem">Storyframe needs JavaScript to open your library.</p></noscript>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

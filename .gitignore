@@ -14,6 +14,7 @@ deploy/app/
 deploy/stories/
 deploy/single-origin/
 deploy/*.zip
+deploy/*.apk
 storyframe-v2.zip
 # Capacitor native project output
 apps/mobile/android/app/build/

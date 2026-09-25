@@ -17,6 +17,7 @@ import { resolve } from 'node:path'
 const BASE = 'http://localhost:4173'
 const XBASE = 'http://localhost:4175'           // same build, config.json → story host on :4174
 const FIXTURE = resolve('tests/fixtures/quick-book.md')
+const DOCX = resolve('tests/fixtures/sample-book.docx')
 mkdirSync('shots', { recursive: true })
 const errors = []
 let passed = 0
@@ -390,6 +391,20 @@ try {
   await page.click('.stepper button:has-text("Publish")'); await sleep(300)
   await contrast('admin wizard (publish)')
   await shot('17-admin-publish')
+
+  // .docx import runs mammoth's browser build (lazy chunk) inside the page
+  await page.goto(BASE + '#/admin/new'); await sleep(400)
+  await page.click('button:has-text("Start a new book")'); await sleep(400)
+  await page.click('.lane:has-text("Quick Book")'); await sleep(300)
+  await page.setInputFiles('[data-testid="upload"]', DOCX)
+  await page.waitForFunction(() => /The Crossing/.test(document.querySelector('#book-md')?.value ?? ''), null, { timeout: 15000 }).catch(() => {})
+  const docxMd = await page.locator('#book-md').inputValue()
+  const docxImg = await page.locator('.filetree li:has-text("assets/image-1.png")').count()
+  check(/## The Crossing/.test(docxMd) && /\*\*one\*\*/.test(docxMd) && docxImg === 1,
+    'wizard: .docx imported in the browser (mammoth) → chapters, emphasis, and the embedded image in assets/',
+    'docx import: ' + JSON.stringify({ md: docxMd.slice(0, 120), img: docxImg }))
+  await page.click('button:has-text("Next: Manifest")'); await sleep(300)
+  check((await page.locator('#m-title').inputValue()) === 'The Lantern Ferry', null, 'docx title not taken from Heading 1')
 
   /* ── 11. settings + a11y ──────────────────────────────────────────── */
   await page.goto(BASE + '#/settings'); await sleep(500)

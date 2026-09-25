@@ -1,0 +1,19 @@
+{
+  "name": "@storyframe/mobile",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Capacitor Android wrapper for the Storyframe reader (debug APK via GitHub Actions; see DEPLOY.md §Android).",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "icons": "node scripts/icons.mjs",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/core": "^7.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4"
+  }
+}

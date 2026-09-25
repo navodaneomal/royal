@@ -9,89 +9,122 @@ The platform is furniture; the stories are the paintings.
 
 ```
 npm install          # once — links the workspaces
-npm test             # 15 contract tests: reducer atomicity, envelopes, publishing
-npm run dev          # two-origin dev: app on :5173, story host on :4174
-npm run build        # stories → validate → publish → app build → single dist/
+npm run doctor       # Node, SDK, git, Playwright, deploy env
+npm test             # contract tests: reducer, bridge, validator, builder, Quick Books, compat, …
+npm run dev          # two-origin dev: app on :5173, story host on :4174 (+ dev admin API)
+npm run build        # books → validate → publish (local) → app build → single dist/
 npm run preview      # serve the production build on :4173
-npm run verify       # full Playwright audit incl. hostile-frame checks (needs Chromium)
+npm run verify       # the Playwright audit (needs: npx playwright install chromium)
+npm run deploy:bundle   # drag-and-drop zips for Cloudflare Pages → deploy/
 ```
 
-Open the app, and two stories are already published to the `production` channel:
+Windows 11, PowerShell or WSL — every command is the same. To put it online
+for $0/month, follow **[DEPLOY.md](DEPLOY.md)**.
+
+## On the shelf
 
 | | |
 |---|---|
-| **The Tulip & The Jester** | A candlelit forgotten-manuscript novella — ten parts, hidden secrets, its entire visual world intact inside the frame. A *legacy integration*: an existing single-file story wrapped for the bridge without rewriting it. |
+| **The Tulip & The Jester** | A candlelit forgotten-manuscript novella — ten parts, hidden secrets, its entire visual world intact inside the frame. The *legacy wrap* lane: an existing single-file story brought in with a small glue file. |
 | **Neon Horizon** | A phosphor-terminal puzzle story written natively against the SDK: semantic checkpoints, a three-level hint ladder with an accessible bypass, one canonical choice, two endings. |
+| **The Keeper of Wend Light** | A three-chapter *Quick Book* written entirely in Markdown — a secret, a nested secret achievement, a canonical choice with branches, two endings, an illustration — in the Watercolor theme. |
 
-The point of shipping two deliberately opposite stories is the platform's whole thesis:
-radically different worlds, one invisible continuity layer.
+Three deliberately different worlds; one invisible continuity layer.
+
+## What v2 adds
+
+- **Admin Studio** (`#/admin`) — drop a `.md`, `.docx`, or `.zip`; edit the manifest;
+  generate a cover; confirm accessibility; run the *same* release gate CI runs; preview
+  in an opaque sandbox with the real bridge; publish with one Git commit; promote,
+  roll back, and pause books with live CI status.
+- **Quick Books** — Markdown + five directives (`secret`, `achievement`, `choice`,
+  `branch`, `ending`) + five themes (Manuscript, Terminal, Watercolor, Noir, Minimal),
+  compiled into native SDK stories.
+- **Declarative builds** — a `build` block in `storyframe.json`; no book ships a build
+  script and CI never runs story code.
+- **$0 hosting, Git as the CMS** — GitHub Actions runs the CLI, keeps immutable releases
+  on a `content` branch, and deploys two Cloudflare Pages projects.
+- **A calmer, richer reader** — cinematic Continue hero, search and filters, a
+  checkpoint map in story language, immersive player with a live settings drawer,
+  onboarding, command palette, offline centre, archive gallery, timeline tree with
+  replay from any checkpoint, notes and bookmarks (protocol 1.1), local reading stats.
+- **Safer releases** — a compatibility checker and migration map so renaming a
+  chapter can never strand a reader mid-story.
+- **Phones** — installable PWA and a Capacitor Android wrapper with an APK workflow.
 
 ## The three planes
 
 ```
 ┌─────────────────────────  APPLICATION PLANE  ─────────────────────────┐
-│  apps/web — React PWA: shelf, player shell, archive, settings,        │
-│  operator console. Owns identity, progress, preferences, downloads.   │
+│  apps/web — React PWA: shelf, player, archive, offline, settings,      │
+│  Admin Studio. Owns identity, progress, preferences, downloads.        │
+│  Reads /config.json at boot (one build, any deployment).               │
 └──────────────────────────────┬────────────────────────────────────────┘
-                               │  sandboxed iframe + private MessagePort
+                               │  sandboxed iframe + private MessagePort (1.1)
 ┌──────────────────────────────▼────────────────  CONTENT PLANE  ───────┐
-│  infra/story-host — immutable, content-addressed story packages       │
-│  (`r` + sha256[:12]) on a separate origin. Channels are pointers in   │
-│  registry.json; promote / rollback / disable never rewrite files.     │
+│  Immutable, content-addressed packages (`r` + sha256[:12]) on a        │
+│  separate origin; channels are pointers in registry.json; the whole    │
+│  tree lives on the `content` branch and is written only by CI.         │
 └──────────────────────────────┬────────────────────────────────────────┘
                                │  same reducer, same schemas
 ┌──────────────────────────────▼────────────────  DATA PLANE  ──────────┐
-│  Local adapter (IndexedDB, guest-first) — active in this build.       │
-│  Supabase adapter (Auth + Postgres + RLS + Edge Function) — complete  │
-│  in supabase/, activates when a project is configured. See STATUS.md. │
+│  Local adapter (IndexedDB, guest-first) — always on.                   │
+│  Supabase adapter (magic link, edge functions, RLS) — optional,        │
+│  switched on by config.json. See STATUS.md.                            │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## What lives where
 
 ```
-packages/protocol     schemas.js (zod contracts) + reducer.js — the ONE set of rules
-                      shared verbatim by the app, the CLI, and the edge function
-packages/story-sdk    what stories embed: connect() → handshake → typed session API
-packages/bridge-host  the host side: nonce handshake, validation, capabilities,
-                      rate limits, sequence replay rejection, acks
-packages/story-cli    storyframe validate | pack | publish | promote | rollback |
-                      disable | enable | doctor
-stories/…             two story sources + their manifests + package builders
-infra/story-host      dev/preview content server (immutable caching, CSP, dev admin API)
-apps/web              the reader application (React + Vite PWA)
-supabase/             migrations (RLS), sf_commit_progress RPC, progress-commit function
+packages/protocol     schemas + the pure reducer (+ migrations, import planning) — the ONE set of rules
+packages/publishing   validator · declarative builder · Quick Book compiler + themes · compat checker ·
+                      registry ops · _headers · covers · docx import  (browser = Node = CI)
+packages/story-sdk    what stories embed: connect() → handshake → session API (progress, prefs, notes)
+packages/bridge-host  the host side: nonce, origin, schema, rate, size, sequence, capabilities, negotiation
+packages/story-cli    storyframe new | build | validate | pack | publish | compat | promote | rollback |
+                      disable | enable | list | doctor
+stories/…             three books (native, wrap, quick) — sources + manifests with build blocks
+apps/web              the reader + Admin Studio (React + Vite PWA)
+apps/mobile           Capacitor Android wrapper
+infra/story-host      dev content server (immutable caching, CSP, dev admin API)
+scripts/              dev · preview · deploy bundles · share cards · CI orchestration · PWA assets
+supabase/             migrations (RLS), commit + import RPCs, progress-commit + progress-import functions
+.github/workflows     ci · publish (content plane) · app · android
 tests/                vitest contract tests · verify.mjs — the browser audit
-docs/                 protocol · author guide · accessibility · incident runbook · ADRs
+docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibility · runbook · ADRs 0001–0011
 ```
 
 ## The rules that make it trustworthy
 
-- **Stories are quarantined.** Online: cross-origin frame, exact-origin postMessage,
-  private MessagePort after a nonce handshake. Offline/preview: an **opaque** sandbox —
-  `origin: "null"` — which cannot touch app storage, cookies, or DOM, and receives *no
-  reader data* in the wildcard welcome. `npm run verify` proves both from inside the frame.
-- **Progress is semantic and atomic.** Checkpoint IDs, never scroll positions. A mutation
-  (checkpoint + items + achievements) applies entirely or not at all; every operation has
-  an `operationId` (idempotent replay) and a `baseRevision` (conflict detection).
-- **Conflicts are archived, never overwritten.** A stale commit becomes an archived
-  timeline and the reader chooses — "Two timelines were found." Ten rolling snapshot
-  backups per timeline are restorable from Settings.
-- **Releases are immutable.** Publishing writes a content-addressed folder plus an
-  `integrity.json`; downloads re-hash every byte before a package is accepted. Promote,
+- **Stories are quarantined.** Online: cross-origin frame, exact-origin handshake,
+  private port. Offline and single-origin: an **opaque** sandbox (`origin: "null"`)
+  that cannot touch app storage, cookies, or DOM, and receives no reader data in the
+  wildcard welcome. The story CSP (`connect-src 'none'`) travels inside every package,
+  so even an offline copy cannot reach the network. `npm run verify` proves all of it
+  from inside the frames.
+- **One contract everywhere.** The reducer, schemas, validator, and builder are the same
+  files in the browser, the CLI, CI, and the edge functions.
+- **Releases are immutable.** Content-addressed folders + `integrity.json`; promote,
   rollback, and disable move pointers and append to the audit log — nothing is deleted.
+- **Progress is semantic and atomic.** Conflicts become archived timelines; canonical
+  choices never flip; renaming IDs requires a migration the reducer applies on resume.
 - **Accessibility is a release gate.** Keyboard and screen-reader declarations are
-  mandatory in the manifest; the reader's one preference profile (type, motion, contrast,
-  sound, puzzle assistance) reaches every running story live over the bridge.
+  mandatory, one preference profile reaches every story live, and the audit measures
+  contrast on every screen in light, dark, and more-contrast modes.
+- **Honesty.** Nothing says "synced", "published", or "deployed" unless it happened.
+  `STATUS.md` separates what is verified from what is merely code-complete.
 
 ## Documentation
 
 | | |
 |---|---|
-| `STATUS.md` | honest P0 acceptance matrix — what is implemented, verified, or code-ready |
-| `docs/protocol.md` | the bridge: handshake, envelope, mutation grammar, ack semantics |
-| `docs/author-guide.md` | writing a story against the SDK, or wrapping an existing one |
-| `docs/accessibility.md` | the preference contract and the WCAG 2.2 AA posture |
-| `docs/incident-runbook.md` | broken release / wrong content / progress incident drills |
-| `docs/decisions/` | ADR-0001…0004 — the four load-bearing engineering decisions |
-| `infra/story-host/README.md` | deploying the content plane to real static hosting |
+| [`DEPLOY.md`](DEPLOY.md) | $0 deployment, click by click, with verified free-tier limits and troubleshooting |
+| [`STATUS.md`](STATUS.md) | honest acceptance matrix — verified, code-complete, or not built |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | planes, publishing flow, trust boundaries, where each secret lives |
+| [`docs/BOOK-AUTHORING.md`](docs/BOOK-AUTHORING.md) | making books: lanes, Quick Book syntax, manifest, IDs and migrations, checklist |
+| [`docs/protocol.md`](docs/protocol.md) | the bridge: handshake, negotiation, envelope, mutations, notes |
+| [`docs/accessibility.md`](docs/accessibility.md) | the preference contract and the WCAG 2.2 AA posture |
+| [`docs/incident-runbook.md`](docs/incident-runbook.md) | broken release / wrong content / progress incidents / blocked publishes |
+| [`docs/decisions/`](docs/decisions) | ADR-0001…0011 — the load-bearing decisions |
+| [`docs/v2-plan.md`](docs/v2-plan.md) | what v1 was, what v2 changed, and why |

@@ -4,9 +4,15 @@ Principles: **stop the bleeding with pointers, never with edits** · releases ar
 immutable, so every action is reversible · progress is sacred — no remedy may
 touch reader snapshots · every action lands in the append-only audit log.
 
-All commands are `npm run storyframe -- <cmd>` from the repo root (or the operator
-console when the dev admin API is up — the console is a window, not a second source
-of truth).
+Three equivalent ways to act (the console is a window, not a second source of
+truth — every path runs the same CLI library):
+
+- **Admin Studio** → the book's release page → Rollback / Disable / Enable /
+  Promote. With GitHub connected this dispatches `publish.yml`; the run's live
+  status is shown, and the audit log records you as the actor.
+- **GitHub** → Actions → *publish* → *Run workflow* → pick the action and slug.
+- **CLI** with the `content` branch checked out (`node scripts/ci/content-branch.mjs
+  checkout`): `npm run storyframe -- <cmd>`, then commit the branch and redeploy.
 
 ## 1. Broken release in production
 
@@ -22,6 +28,12 @@ storyframe enable <slug>
 
 Then reproduce against the bad release (it still exists, content-addressed), fix,
 publish a **new** release, promote it. Never edit files under `releases/`.
+
+**Rolling back across a `stateSchemaVersion` bump** (v2): allowed — it is an
+emergency lever — and the CLI warns. Readers who already saved on the newer
+edition keep their saves; the older edition may not recognise their newest
+checkpoint, and the app tells them so honestly. Prefer *disable* + fix-forward
+when the bad release renamed IDs.
 
 ## 2. Wrong content published (typo, spoiler, missing asset)
 
@@ -65,9 +77,26 @@ offline from verified local packages, and saves continue locally. Restore the ho
 nothing else to do — this failure mode is a designed-for state, not an incident in
 the app.
 
+## 6. A publish is blocked
+
+- *validate* failed: the run summary lists each issue with a "fix:" line (the
+  Admin Studio's Validate step shows the same, because it runs the same code).
+- *promote* refused with "stateSchemaVersion" or "migration": the candidate
+  renamed or removed IDs. Add the migration (`docs/BOOK-AUTHORING.md` §10),
+  publish again, promote. Never bypass the gate — it is what keeps readers'
+  saves resumable.
+
+## 7. CI or hosting is down
+
+The app and every downloaded story keep working (§5). Content changes wait;
+nothing is lost because every change is a commit. When GitHub Actions is back,
+re-run the failed workflow — actions are idempotent (publishing identical
+bytes reuses the same release id).
+
 ## Audit trail
 
-`stories-host/audit-log.json` is append-only; every publish / promote / rollback /
-disable / enable records actor, action, slug, release, channel, and timestamp. The
-operator console renders the same file. If an entry seems missing, the console reads
+`audit-log.json` (on the `content` branch) is append-only; every publish / promote /
+rollback / disable / enable records actor (`GITHUB_ACTOR` in CI), action, slug,
+release, channel, and timestamp — and the branch history records the same change
+as a commit. The Admin Studio dashboard renders the file with filters. If an entry seems missing, the console reads
 the file directly — check the host, not the console.

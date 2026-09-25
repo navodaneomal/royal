@@ -39,7 +39,7 @@ function applyPrefsToDocument(p: any) {
   root.dataset.fontmode = p.fontMode
   root.dataset.motion = p.motion === 'full' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : p.motion
   root.style.setProperty('--text-scale', String(p.textScale))
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', scheme === 'dark' ? '#191612' : '#F5F1E8')
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', scheme === 'dark' ? '#191612' : '#F5F1E8'))
   setLocale(p.locale ?? 'en')
 }
 
@@ -56,6 +56,7 @@ function App() {
   const [pwa, setPwa] = useState({ install: false, update: false })
   const [installDismissed, setInstallDismissed] = useState(true)
   const [cont, setCont] = useState<{ slug: string; title: string } | null>(null)
+  const [contReady, setContReady] = useState(false)
   const gPending = useRef(0)
 
   const toast = useCallback((msg: string) => {
@@ -84,6 +85,7 @@ function App() {
       const latest = (await primaryProgress())[0]
       const s = latest && r.stories.find((x) => x.storyId === latest.progress.storyId)
       if (s) setCont({ slug: s.slug, title: s.title })
+      setContReady(true)
     })()
     initPwa()
     const offPrefs = onPreferencesChange((p: any) => { setPrefsState(p); applyPrefsToDocument(p) })
@@ -135,6 +137,8 @@ function App() {
 
   const route = parts[0] ?? ''
   if (route === 'operator') { navigate('/admin'); return null }
+  // PWA shortcut target: jump straight back into the most recent story
+  if (route === 'continue') { if (contReady) navigate(cont ? `/play/${cont.slug}` : '/'); return null }
   const inPlayer = route === 'play'
   const nav: [string, string][] = [['', t('nav.shelf')], ['collections', t('nav.archive')], ['offline', t('nav.offline')], ['settings', t('nav.settings')]]
   if (admin) nav.push(['admin', t('nav.admin')])

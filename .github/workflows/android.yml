@@ -25,13 +25,12 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci
-      - run: npm run build:app
-      - name: Runtime config for the APK
-        run: >-
-          node scripts/deploy-bundle.mjs --only app
-          --app-origin "https://localhost" --stories-origin "${{ vars.STORIES_ORIGIN }}"
-          --repo "${{ github.repository }}"
+      # app + a locally published library (bundled into the APK when no
+      # STORIES_ORIGIN variable is set — then the APK needs no server at all)
+      - run: npm run build
       - name: Sync web assets into the Android project
+        env:
+          STORIES_ORIGIN: ${{ vars.STORIES_ORIGIN }}
         run: npm --workspace apps/mobile run sync
       - name: Build debug APK
         working-directory: apps/mobile/android
