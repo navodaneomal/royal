@@ -77,12 +77,17 @@ App code follows a separate path: `app.yml` (push on `apps/**`/`packages/**`)
 → test → typecheck → build → `config.json` + `_headers` → `wrangler pages
 deploy` to the "app" project.
 
+**GitHub Pages instead (ADR-0012):** `pages.yml` runs after every successful
+`publish` run and on app changes, builds the single-origin bundle from the
+`content` branch (app + `stories-host/`, app CSP as a `<meta>` tag), and
+deploys it with GitHub's Pages actions to `https://<owner>.github.io/<repo>/`.
+
 ## 4. Trust boundaries
 
 | boundary | enforced by |
 |---|---|
 | story frame ↔ app | `sandbox` (opaque offline/single-origin; `allow-same-origin` only with the *stories* origin online), nonce in the URL fragment, `event.source` identity, exact origin online, schema + size + rate + sequence checks, per-message capabilities, no reader data in a wildcard welcome |
-| story frame ↔ network | story CSP `connect-src 'none'` as an HTTP header **and** a `<meta>` stamped by the builder (so offline blob copies carry it); validator scan for external origins and network APIs |
+| story frame ↔ network | story CSP `connect-src 'none'` as an HTTP header **and** a `<meta>` stamped by the builder (so offline blob copies carry it); validator scan for external origins and network APIs. Blob-frame stories also inherit the app CSP, which is kept a superset of what stories need (ADR-0012) |
 | uploaded book ↔ CI | declarative builder only — no story script ever runs; references outside the story folder are errors; symlinks never followed |
 | Admin Studio ↔ GitHub | fine-grained PAT (one repo; Contents RW + Actions RW) in `sessionStorage` only; hidden from nav without it; optional Cloudflare Access in front of the app |
 | app ↔ stories origin | app CSP `frame-src`/`connect-src` name the stories origin; stories `_headers` send `frame-ancestors` for the app origin when known |
@@ -123,4 +128,5 @@ deploy` to the "app" project.
 ADR-0001 workspaces · 0002 local data plane · 0003 opaque offline + sandbox ·
 0004 plain CSS · **0005 Git as the CMS · 0006 isomorphic publishing core ·
 0007 declarative builder · 0008 runtime config · 0009 protocol 1.1 ·
-0010 Capacitor Android · 0011 compatibility gate + migrations**.
+0010 Capacitor Android · 0011 compatibility gate + migrations ·
+0012 GitHub Pages + blob-frame CSP**.

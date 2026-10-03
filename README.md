@@ -19,7 +19,8 @@ npm run deploy:bundle   # drag-and-drop zips for Cloudflare Pages → deploy/
 ```
 
 Windows 11, PowerShell or WSL — every command is the same. To put it online
-for $0/month, follow **[DEPLOY.md](DEPLOY.md)**.
+for $0/month, follow **[DEPLOY.md](DEPLOY.md)** — with only a GitHub account
+(GitHub Pages, §0) or with Cloudflare for separate origins and real headers.
 
 ## On the shelf
 
@@ -43,7 +44,8 @@ Three deliberately different worlds; one invisible continuity layer.
 - **Declarative builds** — a `build` block in `storyframe.json`; no book ships a build
   script and CI never runs story code.
 - **$0 hosting, Git as the CMS** — GitHub Actions runs the CLI, keeps immutable releases
-  on a `content` branch, and deploys two Cloudflare Pages projects.
+  on a `content` branch, and deploys to GitHub Pages (one account) or two Cloudflare
+  Pages projects.
 - **A calmer, richer reader** — cinematic Continue hero, search and filters, a
   checkpoint map in story language, immersive player with a live settings drawer,
   onboarding, command palette, offline centre, archive gallery, timeline tree with
@@ -90,9 +92,9 @@ apps/mobile           Capacitor Android wrapper
 infra/story-host      dev content server (immutable caching, CSP, dev admin API)
 scripts/              dev · preview · deploy bundles · share cards · CI orchestration · PWA assets
 supabase/             migrations (RLS), commit + import RPCs, progress-commit + progress-import functions
-.github/workflows     ci · publish (content plane) · app · android
+.github/workflows     ci · publish (content plane) · pages (GitHub Pages) · app · android
 tests/                vitest contract tests · verify.mjs — the browser audit
-docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibility · runbook · ADRs 0001–0011
+docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibility · runbook · ADRs 0001–0012
 ```
 
 ## The rules that make it trustworthy
@@ -126,5 +128,5 @@ docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibilit
 | [`docs/protocol.md`](docs/protocol.md) | the bridge: handshake, negotiation, envelope, mutations, notes |
 | [`docs/accessibility.md`](docs/accessibility.md) | the preference contract and the WCAG 2.2 AA posture |
 | [`docs/incident-runbook.md`](docs/incident-runbook.md) | broken release / wrong content / progress incidents / blocked publishes |
-| [`docs/decisions/`](docs/decisions) | ADR-0001…0011 — the load-bearing decisions |
+| [`docs/decisions/`](docs/decisions) | ADR-0001…0012 — the load-bearing decisions |
 | [`docs/v2-plan.md`](docs/v2-plan.md) | what v1 was, what v2 changed, and why |

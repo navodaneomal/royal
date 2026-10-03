@@ -12,9 +12,47 @@ GitHub repository                   main = sources, content = published releases
 GitHub Actions                      builds, validates, publishes, deploys
 ```
 
-> **Short on time?** Do steps 1–2, then **Starter mode** in step 6 (one zip,
-> one drag-and-drop) — a working library in about ten minutes. Come back for
-> the rest when you want the Admin Studio to publish from the browser.
+> **Only want a GitHub account?** Use **GitHub Pages** (section 0 below):
+> three clicks in your repository's settings and the whole library — reader,
+> Admin Studio, publishing — runs at `https://<you>.github.io/<repo>/`.
+>
+> **Want separate origins and real HTTP headers?** Cloudflare Pages (steps
+> 1–15). **Short on time there?** Steps 1–2, then **Starter mode** in step 6.
+
+---
+
+## 0. GitHub Pages — the whole thing with only a GitHub account
+
+The repository ships `.github/workflows/pages.yml`. It builds the library
+from the `content` branch (or from `stories/` before your first publish) and
+deploys it with GitHub's own Pages actions — after every publish, promote,
+rollback, or app change. Nothing else to sign up for.
+
+1. **Default branch → `main`.** Repository → **Settings** → **General** →
+   *Default branch* → switch to `main`. (GitHub only lets the default branch
+   deploy to Pages, and the publish workflow listens to `main`.)
+2. **Pages → GitHub Actions.** **Settings** → **Pages** → *Build and
+   deployment* → *Source*: **GitHub Actions**.
+3. **First deploy.** **Actions** → **pages** → **Run workflow** → `main`.
+   About two minutes later the run shows a link.
+4. **Open it:** `https://<you>.github.io/<repo>/` — three books on the shelf.
+5. **Admin Studio:** `https://<you>.github.io/<repo>/#/admin/connect`. The
+   repository and branch are pre-filled from `config.json`; paste a
+   fine-grained token (step 5 below) and publish (step 10).
+
+How it differs from Cloudflare — honestly:
+
+| | GitHub Pages | Cloudflare Pages (steps 6–8) |
+|---|---|---|
+| accounts | GitHub only | GitHub + Cloudflare |
+| origins | one — every story runs in the **opaque** sandbox (the strictest mode; the audit runs it) | two — online stories get their own origin |
+| security headers | none can be set: the app CSP ships as a `<meta>` tag, stories carry their own CSP `<meta>`; `frame-ancestors` cannot be set, so other sites could frame the app | full `_headers` (CSP, `frame-ancestors`, CORS, immutable caching) |
+| caching | `Cache-Control: max-age=600` on everything (observed 2026-10-03) — a publish can take up to ~10 minutes to show everywhere | immutable releases cached forever, registry never cached |
+| terms | not for commercial sites or SaaS (GitHub's Pages policy) | fine for commercial use |
+
+Moving later is painless: the `content` branch is the source of truth for
+both. Set the repository variable `PAGES_DISABLED=true` to switch the Pages
+workflow off.
 
 ---
 
@@ -22,6 +60,7 @@ GitHub Actions                      builds, validates, publishes, deploys
 
 | service | what we use | free-tier limits that matter | source |
 |---|---|---|---|
+| GitHub Pages *(section 0)* | the whole library, one origin | published site ≤ 1 GB; source repo ≤ 1 GB recommended; **soft** 100 GB/month bandwidth; **soft** 10 builds/hour; a deployment times out after 10 minutes; not for commercial sites or SaaS (checked 2026-10-03) | [limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) |
 | Cloudflare Pages | two static projects | unlimited static requests and bandwidth; **25 MiB per file**; 20,000 files per site; `_headers` ≤ 100 rules; drag-and-drop upload ≤ 1,000 files; 500 builds/month (we do not use Pages builds — CI uploads with wrangler) | [limits](https://developers.cloudflare.com/pages/platform/limits/), [functions pricing](https://developers.cloudflare.com/pages/functions/pricing/), [direct upload](https://developers.cloudflare.com/pages/get-started/direct-upload/) |
 | GitHub Actions | publish / app / ci / android workflows | public repos: free; private repos on GitHub Free: 2,000 minutes/month, 500 MB artifacts | [billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions) |
 | Supabase *(optional)* | accounts + cross-device sync | 500 MB database, 50,000 monthly active users, 5 GB egress, 500,000 function invocations, 2 active projects; **paused after 1 week of inactivity** | [pricing](https://supabase.com/pricing) |

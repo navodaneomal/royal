@@ -5,7 +5,7 @@
    deploy/stories/        + stories.zip         the content plane (+ _headers)
    deploy/single-origin/  + single-origin.zip   starter mode: one project, every story opaque
    deploy/pages/          (--only pages)        GitHub Pages: single origin under /<repo>/,
-                                                CSP as a <meta> tag, .nojekyll (ADR-0012)
+                                                CSP as a <meta> tag (ADR-0012)
 
    Each gets a generated _headers (packages/publishing/src/headers.js) and the
    app bundles a runtime /config.json (ADR-0008) — re-point a bundle by
@@ -119,7 +119,8 @@ if (!only || only === 'single') {
 if (only === 'pages') {
   // GitHub Pages: the starter bundle, served from https://<owner>.github.io/<repo>/.
   // No _headers support there, so the app CSP travels as a <meta> tag (story
-  // packages already carry their own CSP meta); .nojekyll serves files as-is.
+  // packages already carry their own CSP meta). .nojekyll only matters for a
+  // branch-based Pages deploy; the Actions deploy (pages.yml) serves files as-is.
   const dir = join(OUT, 'pages')
   fresh(dir)
   cpSync(DIST, dir, { recursive: true, filter: noGit })

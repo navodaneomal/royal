@@ -1,11 +1,13 @@
 # GitHub Pages: the whole library at https://<owner>.github.io/<repo>/ with
 # no account beyond GitHub (ADR-0012). Builds the single-origin bundle (every
 # story in the opaque sandbox) from the `content` branch — or, before the
-# first publish, from the books in stories/ — and force-pushes it to the
-# `gh-pages` branch, which Pages serves as-is.
+# first publish, from the books in stories/ — and deploys it with GitHub's
+# Pages actions. (A branch-based deploy would not work: pushes made with
+# GITHUB_TOKEN do not trigger Pages builds.)
 #
-# One-time setting: repo → Settings → Pages → Source: "Deploy from a branch",
-# Branch: gh-pages, folder: / (root). Turn this workflow off with the
+# One-time settings: Settings → Pages → Source: "GitHub Actions"; and `main`
+# as the default branch (the github-pages environment only accepts
+# deployments from the default branch). Turn this workflow off with the
 # repository variable PAGES_DISABLED=true (e.g. when you move to Cloudflare).
 name: pages
 
@@ -25,18 +27,47 @@ on:
     types: [completed]
   workflow_dispatch:
 
+# never cancel a deployment half-way; queue the next one instead
 concurrency:
   group: storyframe-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  pages:
+  # Skip quietly (with a notice saying which setting to change) until Pages
+  # is switched to "GitHub Actions" — instead of failing in deploy-pages.
+  # Fails open: any answer other than a clear "not enabled" proceeds.
+  check:
     if: >-
       vars.PAGES_DISABLED != 'true' &&
       (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.pages.outputs.enabled }}
+    steps:
+      - id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$(curl -s -o pages.json -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages")
+          if [ "$code" = "404" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages is off. Settings → Pages → Source: GitHub Actions, then run this workflow again (DEPLOY.md §0)."
+          elif [ "$code" = "200" ] && grep -q '"build_type": *"legacy"' pages.json; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages deploys from a branch. Settings → Pages → Source: GitHub Actions, then run this workflow again (DEPLOY.md §0)."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -85,14 +116,18 @@ jobs:
           --app-origin "$PAGES_URL" --repo "${{ github.repository }}" --branch "$SOURCE_BRANCH"
           --supabase-url "${{ vars.SUPABASE_URL }}" --supabase-anon-key "${{ vars.SUPABASE_ANON_KEY }}"
 
-      - name: Push to gh-pages
-        working-directory: deploy/pages
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git init -q -b gh-pages
-          git add -A
-          git -c user.name=storyframe-ci -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
-            commit -q -m "pages: ${GITHUB_SHA::7} (${{ github.event_name }})"
-          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
-          echo "Deployed → $PAGES_URL/" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: deploy/pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - run: echo "Deployed → ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
