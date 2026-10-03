@@ -55,14 +55,23 @@ export function storiesHeaders({ appOrigins = [] } = {}) {
  *   storyOrigins: where story frames load from ('self' covers single-origin mode)
  *   connectOrigins: extra fetch targets (Supabase URL; GitHub API is always allowed for the Admin Studio)
  */
-export function appHeaders({ storyOrigins = [], connectOrigins = [] } = {}) {
+export function appCsp({ storyOrigins = [], connectOrigins = [] } = {}) {
   const stories = originList(storyOrigins)
   const connect = originList(['https://api.github.com', ...stories, ...connectOrigins])
-  const csp = [
+  // Offline playback and the Admin preview run stories from blob: URLs, and a
+  // blob: document INHERITS the policy of the document that created it — so
+  // the app policy must allow what every story needs (inline script and
+  // style, data:/blob: media). The story's own meta CSP still applies on top
+  // (connect-src 'none'). The app document has no HTML sinks (no innerHTML
+  // anywhere), so 'unsafe-inline' here buys an attacker nothing to inject
+  // into; eval, plugins, foreign scripts, and foreign frames stay blocked.
+  // tests/publishing/hosting.test.js keeps this a superset of STORY_CSP.
+  return [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${stories.join(' ')}`.trim(),
+    "media-src 'self' data: blob:",
     "font-src 'self' data:",
     `connect-src 'self' ${connect.join(' ')}`.trim(),
     `frame-src 'self' blob: ${stories.join(' ')}`.trim(),
@@ -73,6 +82,20 @@ export function appHeaders({ storyOrigins = [], connectOrigins = [] } = {}) {
     "form-action 'self'",
     "frame-ancestors 'none'",
   ].join('; ')
+}
+
+/**
+ * The app CSP as a <meta> tag for hosts that cannot send headers (GitHub
+ * Pages). Browsers ignore frame-ancestors in <meta>, so it is left out;
+ * everything else is enforced the same way.
+ */
+export function appCspMeta(o = {}) {
+  const content = appCsp(o).split('; ').filter((d) => !d.startsWith('frame-ancestors')).join('; ')
+  return `<meta http-equiv="Content-Security-Policy" content="${content}" />`
+}
+
+export function appHeaders({ storyOrigins = [], connectOrigins = [] } = {}) {
+  const csp = appCsp({ storyOrigins, connectOrigins })
   const security = {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',

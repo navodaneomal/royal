@@ -2,7 +2,7 @@
    release notes, and scaffolding — the pure pieces of the hosting pipeline. */
 import { describe, it, expect } from 'vitest'
 import {
-  storiesHeaders, appHeaders, singleOriginHeaders, STORY_CSP,
+  storiesHeaders, appHeaders, appCsp, appCspMeta, singleOriginHeaders, STORY_CSP,
   applyPublish, applyPromote, applyRollback, applySetDisabled, emptyRegistry, channelRelease,
   planStoryCommit, publishCommitMessage, htmlToQuickBookMarkdown, extractReleaseNotes,
   scaffoldStory, TEMPLATES, buildPackage, validatePackage, compileQuickBook, packFiles, stampReleaseFiles,
@@ -155,5 +155,30 @@ describe('publishing plumbing', () => {
       const v = validatePackage({ manifest: b.manifest, files: b.files })
       expect(v.errors, template).toEqual([])
     }
+  })
+})
+
+describe('app CSP vs. stories in blob: frames', () => {
+  // A blob: document inherits the creating document's policy, so offline and
+  // preview stories run under app CSP ∩ story CSP. Every source a story is
+  // allowed must therefore be allowed by the app policy too.
+  const parse = (csp) => Object.fromEntries(csp.split(';').map((d) => d.trim().split(/\s+/)).filter((d) => d[0]).map(([k, ...v]) => [k, v]))
+  const app = parse(appCsp())
+  const story = parse(STORY_CSP)
+  for (const dir of ['script-src', 'style-src', 'img-src', 'media-src', 'font-src']) {
+    it(`app ${dir} covers what a story may use`, () => {
+      const allowed = app[dir] ?? app['default-src']
+      for (const src of story[dir].filter((x) => x !== "'self'")) expect(allowed).toContain(src)
+    })
+  }
+  it('still blocks eval, plugins, and foreign frames in the app', () => {
+    expect(app['script-src']).not.toContain("'unsafe-eval'")
+    expect(app['object-src']).toEqual(["'none'"])
+    expect(app['frame-src']).toEqual(["'self'", 'blob:'])
+  })
+  it('the <meta> form drops frame-ancestors (ignored in meta) and nothing else', () => {
+    const meta = appCspMeta().match(/content="([^"]+)"/)[1]
+    expect(meta).not.toMatch(/frame-ancestors/)
+    expect(parse(meta)['script-src']).toEqual(app['script-src'])
   })
 })

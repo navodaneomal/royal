@@ -14,6 +14,16 @@ describe('resolveConfig', () => {
     expect(r.source).toBe('config.json')
     expect(r.warnings).toEqual([])
   })
+  it('defaults to a relative path so the build works under a sub-path (GitHub Pages)', () => {
+    expect(DEFAULT_STORY_ORIGIN).toBe('stories-host')
+    expect(resolveConfig({ storyOrigin: 'stories-host' }).config.storyOrigin).toBe('stories-host')
+    expect(resolveConfig({ storyOrigin: '/stories-host/' }).config.storyOrigin).toBe('/stories-host')
+    expect(resolveConfig({ githubBranch: 'main' }).config.githubBranch).toBe('main')
+  })
+  it('refuses protocol-relative and scheme-carrying paths', () => {
+    expect(resolveConfig({ storyOrigin: '//evil.example/stories' }).config.storyOrigin).toBe(DEFAULT_STORY_ORIGIN)
+    expect(resolveConfig({ storyOrigin: 'data:text/html,hi' }).config.storyOrigin).toBe(DEFAULT_STORY_ORIGIN)
+  })
   it('lets the build-time env override the story origin (npm run dev)', () => {
     expect(resolveConfig({ storyOrigin: '/stories-host' }, { VITE_STORY_ORIGIN: 'http://localhost:4174' }).config.storyOrigin).toBe('http://localhost:4174')
   })

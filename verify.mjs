@@ -14,7 +14,10 @@ import { mkdirSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 
-const BASE = 'http://localhost:4173'
+// VERIFY_DIR=deploy/pages VERIFY_BASE_PATH=/royal/ audits a GitHub Pages
+// bundle under its sub-path, with the app CSP enforced from a <meta> tag
+const BASE_PATH = process.env.VERIFY_BASE_PATH || ''
+const BASE = 'http://localhost:4173' + BASE_PATH
 const XBASE = 'http://localhost:4175'           // same build, config.json → story host on :4174
 const FIXTURE = resolve('tests/fixtures/quick-book.md')
 const DOCX = resolve('tests/fixtures/sample-book.docx')
@@ -26,9 +29,10 @@ const fail = (s) => { errors.push(s); console.log('  ✗ ' + s) }
 const check = (ok, good, bad) => { if (ok) { passed += 1; if (good) note(good) } else fail(bad ?? good) }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+const { PREVIEW_DIR, BASE_PATH: _bp, ...cleanEnv } = process.env
 const servers = [
-  spawn(process.execPath, ['scripts/preview.mjs'], { stdio: 'ignore' }),
-  spawn(process.execPath, ['scripts/preview.mjs'], { stdio: 'ignore', env: { ...process.env, PORT: '4175', PREVIEW_CONFIG: JSON.stringify({ storyOrigin: 'http://localhost:4174' }) } }),
+  spawn(process.execPath, ['scripts/preview.mjs'], { stdio: 'ignore', env: { ...cleanEnv, ...(process.env.VERIFY_DIR ? { PREVIEW_DIR: process.env.VERIFY_DIR } : {}), ...(BASE_PATH ? { BASE_PATH } : {}) } }),
+  spawn(process.execPath, ['scripts/preview.mjs'], { stdio: 'ignore', env: { ...cleanEnv, PORT: '4175', PREVIEW_CONFIG: JSON.stringify({ storyOrigin: 'http://localhost:4174' }) } }),
   spawn(process.execPath, ['infra/story-host/server.mjs'], { stdio: 'ignore' }),
 ]
 await sleep(1500)
@@ -85,6 +89,21 @@ async function a11yBasics(label, p = page) {
 }
 
 try {
+  if (BASE_PATH) {
+    /* ── GitHub Pages bundle: sub-path + CSP from <meta> ──────────────── */
+    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const pg = await page.evaluate(async () => ({
+      csp: document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content') ?? '',
+      config: await fetch('config.json').then((r) => r.json()).catch(() => null),
+      scope: await Promise.race([navigator.serviceWorker.ready.then((r) => r.scope), new Promise((r) => setTimeout(() => r(''), 5000))]),
+    }))
+    check(/script-src 'self'/.test(pg.csp) && /frame-src 'self' blob:/.test(pg.csp) && !/frame-ancestors/.test(pg.csp),
+      "pages: app CSP enforced from a <meta> tag (GitHub Pages sends no custom headers)", 'pages CSP meta: ' + pg.csp)
+    check(pg.config?.storyOrigin === 'stories-host' && !!pg.config?.githubRepo,
+      `pages: config.json resolved under ${BASE_PATH} (stories-host, repo ${pg.config?.githubRepo})`, 'pages config: ' + JSON.stringify(pg.config))
+    check(new URL(pg.scope || 'http://x/').pathname === BASE_PATH, `pages: service worker scoped to ${BASE_PATH}`, 'pages SW scope: ' + pg.scope)
+  }
+
   /* ── 0. first run: onboarding sets the profile once ─────────────── */
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await page.waitForSelector('.dialog.onboard', { timeout: 6000 })

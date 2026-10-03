@@ -12,5 +12,5 @@ if (!existsSync(from)) { console.error('no published stories — run npm run sto
 cpSync(from, to, { recursive: true, filter: (src) => !/[\\/]\.git([\\/]|$)/.test(src) })
 // runtime config for the single-origin preview (ADR-0008) unless one exists
 const config = resolve('apps/web/dist/config.json')
-if (!existsSync(config)) writeFileSync(config, JSON.stringify({ storyOrigin: '/stories-host' }, null, 2) + '\n')
+if (!existsSync(config)) writeFileSync(config, JSON.stringify({ storyOrigin: 'stories-host' }, null, 2) + '\n')
 console.log('stories-host copied into apps/web/dist')

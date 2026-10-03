@@ -4,6 +4,8 @@
    deploy/app/            + app.zip             app shell (two-origin production mode)
    deploy/stories/        + stories.zip         the content plane (+ _headers)
    deploy/single-origin/  + single-origin.zip   starter mode: one project, every story opaque
+   deploy/pages/          (--only pages)        GitHub Pages: single origin under /<repo>/,
+                                                CSP as a <meta> tag, .nojekyll (ADR-0012)
 
    Each gets a generated _headers (packages/publishing/src/headers.js) and the
    app bundles a runtime /config.json (ADR-0008) — re-point a bundle by
@@ -11,7 +13,8 @@
 
    node scripts/deploy-bundle.mjs [--app-origin https://x.pages.dev]
        [--stories-origin https://y.pages.dev] [--repo owner/name]
-       [--supabase-url …] [--supabase-anon-key …] [--only app|stories|single] [--zip]
+       [--supabase-url …] [--supabase-anon-key …] [--only app|stories|single|pages] [--zip]
+       [--branch main]   source branch the Admin Studio commits to (config.json)
 
    Without origins the bundles assume the Cloudflare project names
    "storyframe-app" and "storyframe-stories" and allow any *.pages.dev
@@ -20,7 +23,7 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync, readdirSync, stat
 import { join, resolve, relative, sep } from 'node:path'
 import { zipSync } from 'fflate'
 import { hostDir, REPO } from '../packages/story-cli/src/lib.mjs'
-import { appHeaders, storiesHeaders, singleOriginHeaders } from '../packages/publishing/src/headers.js'
+import { appHeaders, appCspMeta, storiesHeaders, singleOriginHeaders } from '../packages/publishing/src/headers.js'
 import { writeShareCards } from './share-cards.mjs'
 
 const argv = process.argv.slice(2)
@@ -33,6 +36,7 @@ const clean = (o) => (o ? o.replace(/\/+$/, '') : o)
 const appOrigin = clean(arg('app-origin', process.env.APP_ORIGIN || ''))
 const storiesOrigin = clean(arg('stories-origin', process.env.STORIES_ORIGIN || ''))
 const repo = arg('repo', process.env.GITHUB_REPOSITORY || '')
+const branch = arg('branch', '')
 const supabaseUrl = clean(arg('supabase-url', process.env.SUPABASE_URL || ''))
 const supabaseAnonKey = arg('supabase-anon-key', process.env.SUPABASE_ANON_KEY || '')
 const only = arg('only', '')
@@ -53,6 +57,7 @@ function writeJson(file, value) { writeFileSync(file, JSON.stringify(value, null
 function config(storyOrigin) {
   const c = { storyOrigin }
   if (repo) c.githubRepo = repo
+  if (branch) c.githubBranch = branch
   if (supabaseUrl && supabaseAnonKey) { c.supabaseUrl = supabaseUrl; c.supabaseAnonKey = supabaseAnonKey }
   return c
 }
@@ -105,10 +110,28 @@ if (!only || only === 'single') {
   fresh(dir)
   cpSync(DIST, dir, { recursive: true, filter: noGit })
   if (!existsSync(join(dir, 'stories-host', 'registry.json'))) cpSync(HOST, join(dir, 'stories-host'), { recursive: true, filter: noGit })
-  writeJson(join(dir, 'config.json'), config('/stories-host'))
+  writeJson(join(dir, 'config.json'), config('stories-host'))
   writeFileSync(join(dir, '_headers'), singleOriginHeaders({ connectOrigins: supabaseUrl ? [supabaseUrl] : [] }))
   await writeShareCards(join(dir, 'stories-host'), { appUrl: '../../', storiesUrl: appOrigin ? `${appOrigin}/stories-host` : '' })
   made.push(['single-origin', dir])
+}
+
+if (only === 'pages') {
+  // GitHub Pages: the starter bundle, served from https://<owner>.github.io/<repo>/.
+  // No _headers support there, so the app CSP travels as a <meta> tag (story
+  // packages already carry their own CSP meta); .nojekyll serves files as-is.
+  const dir = join(OUT, 'pages')
+  fresh(dir)
+  cpSync(DIST, dir, { recursive: true, filter: noGit })
+  if (!existsSync(join(dir, 'stories-host', 'registry.json'))) cpSync(HOST, join(dir, 'stories-host'), { recursive: true, filter: noGit })
+  writeJson(join(dir, 'config.json'), config('stories-host'))
+  writeFileSync(join(dir, '.nojekyll'), '')
+  const index = join(dir, 'index.html')
+  const meta = appCspMeta({ connectOrigins: supabaseUrl ? [supabaseUrl] : [] })
+  writeFileSync(index, readFileSync(index, 'utf8').replace(/<meta charset="UTF-8" \/>|<meta charset="utf-8" \/>/i, (m) => `${m}\n  ${meta}`))
+  if (!readFileSync(index, 'utf8').includes('Content-Security-Policy')) { console.error('could not place the CSP meta in index.html'); process.exit(1) }
+  await writeShareCards(join(dir, 'stories-host'), { appUrl: '../../', storiesUrl: appOrigin ? `${appOrigin}/stories-host` : '' })
+  made.push(['pages', dir])
 }
 
 for (const [name, dir] of made) {
@@ -117,7 +140,7 @@ for (const [name, dir] of made) {
     console.log(`  ✓ deploy/${name}.zip — ${z.files} files, ${(z.bytes / 1024).toFixed(0)} KB`)
   } else console.log(`  ✓ deploy/${name}/`)
 }
-if (!appOrigin || !storiesOrigin) {
+if (only !== 'pages' && (!appOrigin || !storiesOrigin)) {
   console.log(`\n  note: origins not given — assumed ${DEFAULT_APP} and ${DEFAULT_STORIES};
         CSP/CORS allow any *.pages.dev. Re-run with --app-origin/--stories-origin to lock them down.`)
 }

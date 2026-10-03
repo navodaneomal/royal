@@ -10,7 +10,7 @@ import { config } from './config'
 
 export const storyBase = () => config().storyOrigin.replace(/\/$/, '')
 /** @deprecated v1 name — the base can change after boot, so call storyBase() */
-export const STORY_BASE_DEFAULT = '/stories-host'
+export const STORY_BASE_DEFAULT = 'stories-host'
 
 export const isCrossOrigin = () => {
   try { return storyBase().startsWith('http') && new URL(storyBase()).origin !== location.origin }

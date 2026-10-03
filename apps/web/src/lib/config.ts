@@ -10,7 +10,7 @@
    in sessionStorage (see lib/admin.ts). */
 
 export type RuntimeConfig = {
-  storyOrigin: string              // absolute origin, or a same-origin path like /stories-host
+  storyOrigin: string              // absolute origin, or a same-origin path: stories-host (relative to the app) or /stories-host
   supabaseUrl?: string
   supabaseAnonKey?: string
   githubRepo?: string              // owner/name — enables the Admin Studio's publish + operator actions
@@ -24,7 +24,8 @@ export type ResolvedConfig = {
   warnings: string[]
 }
 
-export const DEFAULT_STORY_ORIGIN = '/stories-host'
+/** Relative, so the app works at a domain root and under a sub-path (GitHub Pages: /<repo>/). */
+export const DEFAULT_STORY_ORIGIN = 'stories-host'
 const SECRET_KEYS = /token|secret|pat$|password|service.?role|private/i
 
 /** Pure: merge config.json with the build-time env override. Tested in tests/app/config.test.ts. */
@@ -38,7 +39,7 @@ export function resolveConfig(json: unknown, env: { VITE_STORY_ORIGIN?: string }
   }
 
   const validOrigin = (v: unknown): v is string =>
-    typeof v === 'string' && (/^https?:\/\/[^/\s]+(\/[^\s]*)?$/i.test(v) || /^\/[\w./-]*$/.test(v))
+    typeof v === 'string' && (/^https?:\/\/[^/\s]+(\/[^\s]*)?$/i.test(v) || /^\/(?!\/)[\w./-]*$/.test(v) || /^[\w][\w./-]*$/.test(v))
 
   let storyOrigin = DEFAULT_STORY_ORIGIN
   let source: ResolvedConfig['source'] = 'default'
@@ -48,7 +49,7 @@ export function resolveConfig(json: unknown, env: { VITE_STORY_ORIGIN?: string }
     } else if (validOrigin(raw.storyOrigin)) {
       storyOrigin = raw.storyOrigin
       source = 'config.json'
-    } else warnings.push('config.json storyOrigin must be an http(s) URL or a /path — using ' + DEFAULT_STORY_ORIGIN)
+    } else warnings.push('config.json storyOrigin must be an http(s) URL or a path — using ' + DEFAULT_STORY_ORIGIN)
   }
   if (env.VITE_STORY_ORIGIN && validOrigin(env.VITE_STORY_ORIGIN)) { storyOrigin = env.VITE_STORY_ORIGIN; source = 'env' }
 
@@ -72,13 +73,13 @@ export function resolveConfig(json: unknown, env: { VITE_STORY_ORIGIN?: string }
 
 let current: ResolvedConfig = resolveConfig(null, (import.meta as any).env ?? {})
 
-/** Fetch /config.json once at boot (3 s budget; offline boot uses the SW-cached copy or defaults). */
+/** Fetch config.json (next to index.html) once at boot (3 s budget; offline boot uses the SW-cached copy or defaults). */
 export async function loadConfig(): Promise<ResolvedConfig> {
   let json: unknown = null
   try {
     const ctl = new AbortController()
     const timer = setTimeout(() => ctl.abort(), 3000)
-    const res = await fetch('/config.json', { cache: 'no-cache', signal: ctl.signal })
+    const res = await fetch('config.json', { cache: 'no-cache', signal: ctl.signal })
     clearTimeout(timer)
     if (res.ok && (res.headers.get('content-type') ?? '').includes('json')) json = await res.json()
   } catch { /* no config.json — defaults */ }

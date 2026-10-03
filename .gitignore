@@ -13,6 +13,7 @@ infra/story-host/stories-host/
 deploy/app/
 deploy/stories/
 deploy/single-origin/
+deploy/pages/
 deploy/*.zip
 deploy/*.apk
 storyframe-v2.zip

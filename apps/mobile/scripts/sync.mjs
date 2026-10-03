@@ -34,7 +34,7 @@ if (config && /^https?:\/\//.test(config.storyOrigin ?? '')) {
 } else {
   if (!existsSync(join(HOST, 'registry.json'))) { console.error(`no stories to bundle in ${HOST} — run npm run stories:publish, or set STORIES_ORIGIN`); process.exit(1) }
   cpSync(HOST, join(WWW, 'stories-host'), { recursive: true, filter: (src) => !/[\\/]\.git([\\/]|$)/.test(src) })
-  config = { ...(config ?? {}), storyOrigin: '/stories-host' }
+  config = { ...(config ?? {}), storyOrigin: 'stories-host' }
   console.log('  story origin: bundled into the APK (/stories-host, opaque sandbox)')
 }
 writeFileSync(join(WWW, 'config.json'), JSON.stringify(config, null, 2) + '\n')

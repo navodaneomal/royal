@@ -154,12 +154,12 @@ function App() {
           <button className="btn small" onClick={applyUpdate}>{t('banner.updateNow')}</button>
         </div>
       )}
-      {catalogError && !inPlayer && configInfo().config.storyOrigin !== '/stories-host' && (
+      {catalogError && !inPlayer && !/^\/?stories-host$/.test(configInfo().config.storyOrigin) && (
         <div className="banner warn" role="alert">{t('banner.config', { origin: config().storyOrigin })}</div>
       )}
       {!inPlayer && (
         <header className="chrome">
-          <a className="brand" href="#/"><img src="/icon.svg" alt="" /> {t('app.name')}</a>
+          <a className="brand" href="#/"><img src="icon.svg" alt="" /> {t('app.name')}</a>
           <nav aria-label={t('nav.main')}>
             {nav.map(([r, label]) => (
               <a key={r} href={`#/${r}`} aria-current={route === r ? 'page' : undefined}>{label}</a>

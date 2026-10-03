@@ -1,0 +1,98 @@
+# GitHub Pages: the whole library at https://<owner>.github.io/<repo>/ with
+# no account beyond GitHub (ADR-0012). Builds the single-origin bundle (every
+# story in the opaque sandbox) from the `content` branch — or, before the
+# first publish, from the books in stories/ — and force-pushes it to the
+# `gh-pages` branch, which Pages serves as-is.
+#
+# One-time setting: repo → Settings → Pages → Source: "Deploy from a branch",
+# Branch: gh-pages, folder: / (root). Turn this workflow off with the
+# repository variable PAGES_DISABLED=true (e.g. when you move to Cloudflare).
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+  # after every publish / promote / rollback / disable / enable
+  workflow_run:
+    workflows: [publish]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: storyframe-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  pages:
+    if: >-
+      vars.PAGES_DISABLED != 'true' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_BRANCH: ${{ vars.SOURCE_BRANCH || 'main' }}
+      # <owner>.github.io repos are served at the root; project repos under /<repo>/
+      PAGES_URL: >-
+        ${{ vars.PAGES_URL
+            || (endsWith(github.event.repository.name, '.github.io') && format('https://{0}', github.event.repository.name))
+            || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run sdk:build
+
+      - name: The published library (content branch, or stories/ before the first publish)
+        env:
+          STORYFRAME_ACTOR: github-pages-bootstrap
+        run: |
+          if git ls-remote --exit-code --heads origin content > /dev/null; then
+            node scripts/ci/content-branch.mjs checkout
+            echo "Library: the \`content\` branch." >> "$GITHUB_STEP_SUMMARY"
+          else
+            node packages/story-cli/src/storyframe.mjs build --all
+            node packages/story-cli/src/storyframe.mjs publish --all --channel production
+            echo "::notice::No content branch yet — built the books in stories/. The first publish run creates it."
+            echo "Library: built from \`stories/\` (no \`content\` branch yet)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - run: npm --workspace apps/web run build
+
+      - name: Install a browser for PNG share cards
+        continue-on-error: true
+        run: npx playwright install chromium
+
+      - name: Bundle for GitHub Pages
+        run: >-
+          node scripts/deploy-bundle.mjs --only pages
+          --app-origin "$PAGES_URL" --repo "${{ github.repository }}" --branch "$SOURCE_BRANCH"
+          --supabase-url "${{ vars.SUPABASE_URL }}" --supabase-anon-key "${{ vars.SUPABASE_ANON_KEY }}"
+
+      - name: Push to gh-pages
+        working-directory: deploy/pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name=storyframe-ci -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -q -m "pages: ${GITHUB_SHA::7} (${{ github.event_name }})"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
+          echo "Deployed → $PAGES_URL/" >> "$GITHUB_STEP_SUMMARY"

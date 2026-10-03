@@ -32,9 +32,9 @@ export function initPwa() {
   addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; emit() })
   addEventListener('appinstalled', () => { deferred = null; emit() })
   if (!('serviceWorker' in navigator) || /^517/.test(location.port) || (import.meta as any).env?.DEV) return
-  addEventListener('load', async () => {
+  const register = async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js')
+      const reg = await navigator.serviceWorker.register('sw.js')   // relative: scope = wherever the app lives
       const track = (w: ServiceWorker | null) => {
         if (!w) return
         w.addEventListener('statechange', () => {
@@ -45,5 +45,8 @@ export function initPwa() {
       reg.addEventListener('updatefound', () => track(reg.installing))
       setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000)
     } catch { /* no SW — the app still works online */ }
-  })
+  }
+  // initPwa runs from a React effect, which can land after `load` has fired
+  if (document.readyState === 'complete') register()
+  else addEventListener('load', register, { once: true })
 }

@@ -15,7 +15,7 @@ import { spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  REPO, buildStory, validateStory, publishStory, promote, rollback, setDisabled, listStories, loadRegistry,
+  REPO, buildStory, validateStory, publishStory, promote, rollback, setDisabled, listStories, loadRegistry, hostDir,
 } from '../../packages/story-cli/src/lib.mjs'
 
 const env = (k, d = '') => (process.env[k] ?? d).trim()
@@ -36,7 +36,12 @@ function changedSlugs() {
 
 switch (action) {
   case 'publish': {
-    const channel = env('SF_CHANNEL', 'beta') || 'beta'
+    // The very first content run (no `content` branch yet) goes straight to
+    // production: there are no readers to protect yet, and a beta-only
+    // library would leave the public shelf empty. Afterwards: beta first.
+    const firstRun = !existsSync(join(hostDir(), 'registry.json'))
+    const channel = env('SF_CHANNEL') || (firstRun ? 'production' : 'beta')
+    if (firstRun) console.log(`first content run — publishing to ${channel}`)
     const slugs = slugInput ? [slugInput] : changedSlugs()
     if (!slugs.length) console.log('no story folders changed — nothing to publish')
     for (const slug of slugs) {
