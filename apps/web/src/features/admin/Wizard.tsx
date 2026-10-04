@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import sdkText from '@storyframe/sdk/dist/storyframe-sdk.iife.js?raw'
 import {
   buildPackage, validatePackage, packFiles, groupIssues, scaffoldStory, htmlToQuickBookMarkdown, checkCompatibility,
-  parseFrontMatter, toBytes, toText, formatBytes, MAX_FILE_BYTES, slugify, extOf,
+  parseFrontMatter, toBytes, toText, formatBytes, MAX_FILE_BYTES, slugify, extOf, lockChapterIds,
 } from '@storyframe/publishing'
 import { useApp } from '../../context'
 import { catalog, releaseFor, fetchReleaseManifest, type CatalogStory } from '../../lib/catalog'
@@ -38,16 +38,8 @@ function newDraft(): Draft {
     cover: { palette: 'dusk', motif: 'lantern', typeface: 'serif', subtitle: '', mode: 'existing' }, createdAt: now, updatedAt: now }
 }
 
-/** Write each generated chapter id back into book.md so renaming a heading later cannot break readers. */
-export function lockChapterIds(md: string, checkpoints: { id: string }[]) {
-  let i = 0
-  return md.split(/\r?\n/).map((line) => {
-    const m = /^##\s+(.*?)\s*(\{[^}]*\})?\s*$/.exec(line)
-    if (!m || /^###/.test(line)) return line
-    const cp = checkpoints[i++]
-    return m[2] || !cp ? line : `## ${m[1]} {#${cp.id}}`
-  }).join('\n')
-}
+/** Shared with the composer: chapter ids written back into book.md (see @storyframe/publishing). */
+export { lockChapterIds }
 
 /* ── draft picker (#/admin/new) ──────────────────────────────────── */
 export function WizardHome() {
@@ -87,7 +79,7 @@ export function Wizard({ draftId }: { draftId: string }) {
   const [saved, setSaved] = useState<string>('')
   const saveTimer = useRef<number>(0)
 
-  useEffect(() => { loadDraft(draftId).then((d) => setDraft(d ?? null)); catalog().then((c) => setStories(c.stories)) }, [draftId])
+  useEffect(() => { loadDraft(draftId).then((d) => setDraft(d ?? null)); catalog().then((c) => setStories(c.stories.filter((x) => !x.local))) }, [draftId])
   const update = (patch: Partial<Draft> | ((d: Draft) => Draft)) => setDraft((d) => {
     const next = typeof patch === 'function' ? patch(d!) : { ...d!, ...patch }
     clearTimeout(saveTimer.current)
@@ -448,7 +440,7 @@ function PublishStep({ draft, source, build, validation, pack, existing, update,
       say(`Waiting for ${pack.releaseId} to appear in registry.json…`)
       for (let i = 0; i < 60; i++) {
         const c = await catalog(true)
-        const s = c.stories.find((x: CatalogStory) => x.storyId === draft.manifest.storyId)
+        const s = c.stories.find((x: CatalogStory) => x.storyId === draft.manifest.storyId && !x.local)
         if (s?.releases.some((rel) => rel.releaseId === pack.releaseId)) { setDone({ releaseId: pack.releaseId }); say(`✓ ${pack.releaseId} is live on the beta channel.`); onPublished(); return }
         await new Promise((res) => setTimeout(res, 5000))
       }

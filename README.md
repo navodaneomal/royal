@@ -16,6 +16,7 @@ npm run build        # books → validate → publish (local) → app build → 
 npm run preview      # serve the production build on :4173
 npm run verify       # the Playwright audit (needs: npx playwright install chromium)
 npm run deploy:bundle   # drag-and-drop zips for Cloudflare Pages → deploy/
+npm run setup:pages     # free GitHub Pages hosting: check, then --fix (your own token)
 ```
 
 Windows 11, PowerShell or WSL — every command is the same. To put it online
@@ -31,6 +32,24 @@ for $0/month, follow **[DEPLOY.md](DEPLOY.md)** — with only a GitHub account
 | **The Keeper of Wend Light** | A three-chapter *Quick Book* written entirely in Markdown — a secret, a nested secret achievement, a canonical choice with branches, two endings, an illustration — in the Watercolor theme. |
 
 Three deliberately different worlds; one invisible continuity layer.
+
+## New in this edition
+
+- **A calmer, richer interface** — a sidebar on desktop and a thumb-reach tab bar on
+  phones, a greeting and a "Start here" spotlight on the shelf, honest progress segments
+  (one per chapter, never a percentage), a cinematic story page, settings as cards, and
+  five accent colours every reader can choose (contrast-tested in light, dark, and
+  more-contrast).
+- **Add a book in seconds** (`#/add`, any reader) — pick a starter, drop a `.md`,
+  `.docx`, or plain `.txt` (chapters like "CHAPTER ONE" or "Part III" are found for you),
+  or just write. Title, cover, chapters, and checks fill themselves in; "Read it now" keeps
+  the book privately on that device, sealed in the same sandbox as every story.
+- **Publish in one screen** (Studio → Publish) — the same workshop with "Publish for
+  everyone" (and an option to skip beta). The 8-step wizard stays as *Advanced*.
+- **Hosting centre** (Studio → Hosting, or `npm run setup:pages`) — a live checklist of
+  the free GitHub Pages setup and a **Fix it for me** button that finishes it with your own
+  token. Your links and a QR code are on the same page.
+- **Share with a QR code** — every book's page can show a code that opens it on a phone.
 
 ## What v2 adds
 
@@ -94,7 +113,7 @@ scripts/              dev · preview · deploy bundles · share cards · CI orch
 supabase/             migrations (RLS), commit + import RPCs, progress-commit + progress-import functions
 .github/workflows     ci · publish (content plane) · pages (GitHub Pages) · app · android
 tests/                vitest contract tests · verify.mjs — the browser audit
-docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibility · runbook · ADRs 0001–0012
+docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibility · runbook · ADRs 0001–0013
 ```
 
 ## The rules that make it trustworthy
@@ -128,5 +147,5 @@ docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibilit
 | [`docs/protocol.md`](docs/protocol.md) | the bridge: handshake, negotiation, envelope, mutations, notes |
 | [`docs/accessibility.md`](docs/accessibility.md) | the preference contract and the WCAG 2.2 AA posture |
 | [`docs/incident-runbook.md`](docs/incident-runbook.md) | broken release / wrong content / progress incidents / blocked publishes |
-| [`docs/decisions/`](docs/decisions) | ADR-0001…0012 — the load-bearing decisions |
+| [`docs/decisions/`](docs/decisions) | ADR-0001…0013 — the load-bearing decisions |
 | [`docs/v2-plan.md`](docs/v2-plan.md) | what v1 was, what v2 changed, and why |

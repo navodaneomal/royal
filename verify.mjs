@@ -21,6 +21,7 @@ const BASE = 'http://localhost:4173' + BASE_PATH
 const XBASE = 'http://localhost:4175'           // same build, config.json → story host on :4174
 const FIXTURE = resolve('tests/fixtures/quick-book.md')
 const DOCX = resolve('tests/fixtures/sample-book.docx')
+const TXT = resolve('tests/fixtures/plain-book.txt')
 mkdirSync('shots', { recursive: true })
 const errors = []
 let passed = 0
@@ -125,6 +126,14 @@ try {
   /* ── 1. shelf ─────────────────────────────────────────────────────── */
   const cards = await page.locator('.grid-books.shelf .story-card').count()
   check(cards === 3, 'shelf: all three stories on the Living Shelf', `shelf shows ${cards} stories, expected 3`)
+  const shell = await page.evaluate(() => ({
+    sidebar: getComputedStyle(document.querySelector('.sidebar')).display !== 'none',
+    tabbar: getComputedStyle(document.querySelector('.tabbar')).display === 'none',
+    current: document.querySelector('.side-nav a[aria-current="page"]')?.textContent?.trim(),
+    spotlight: !!document.querySelector('.hero.spotlight .btn'),
+  }))
+  check(shell.sidebar && shell.tabbar && shell.current === 'Library' && shell.spotlight,
+    'shell v3: desktop sidebar (Library current), no tab bar, "Start here" spotlight for a first-time reader', 'shell: ' + JSON.stringify(shell))
   await a11yBasics('shelf')
   await contrast('shelf (light)')
   await shot('01-shelf')
@@ -442,6 +451,11 @@ try {
   await contrast('settings (dark, more contrast)', page, 7)
   await page.selectOption('#set-colorScheme', 'light')
   await page.selectOption('#set-contrast', 'normal')
+  await page.click('.accent-picker button:has-text("Indigo")'); await sleep(200)
+  const tint = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--brass').trim().toLowerCase())
+  check(tint === '#3f51a8', 'accent themes: "Indigo" re-tints the shell live', 'accent not applied: ' + tint)
+  await contrast('settings (indigo accent)')
+  await page.click('.accent-picker button:has-text("Brass")'); await sleep(150)
 
   /* ── 12. cross-origin mode via runtime config.json ────────────────── */
   const xctx = await browser.newContext({ viewport: { width: 1200, height: 800 } })
@@ -458,6 +472,65 @@ try {
   await xp.screenshot({ path: 'shots/20-cross-origin.png' })
   await xctx.close()
 
+  /* ── 12b. add a book: templates, plain text, on this device ────────── */
+  await page.goto(BASE + '#/add'); await page.waitForSelector('.template'); await sleep(300)
+  await a11yBasics('add a book (templates)')
+  await contrast('add a book (templates)')
+  await page.click('[data-template="signal"]'); await sleep(900)
+  let cverdict = await page.locator('[data-testid="compose-verdict"]').textContent()
+  check(/Ready/.test(cverdict ?? ''), 'add a book: a starter template compiles and passes the release gate in the browser — ' + cverdict?.trim(), 'template verdict: ' + cverdict)
+  await page.click('[role="tab"]:has-text("Upload a file")'); await sleep(200)
+  await page.setInputFiles('[data-testid="compose-upload"]', TXT); await sleep(1200)
+  cverdict = await page.locator('[data-testid="compose-verdict"]').textContent()
+  const facts = await page.locator('.facts-mini').textContent()
+  const cmd = await page.locator('#compose-md').inputValue()
+  check(/Ready/.test(cverdict ?? '') && /^# The Paper Boat/m.test(cmd) && /^## Chapter Two: Downstream/m.test(cmd) && /^## Epilogue/m.test(cmd),
+    'add a book: plain .txt → title + 3 chapters detected ("CHAPTER ONE", "CHAPTER TWO: …", "Epilogue"), scene break kept', 'txt import: ' + cverdict + ' / ' + facts + ' / ' + cmd.slice(0, 120))
+  await a11yBasics('add a book (write)')
+  await contrast('add a book (write)')
+  await shot('23-add-a-book')
+  await page.click('[data-testid="compose-keep"]')
+  await page.waitForFunction(() => location.hash.startsWith('#/play/the-paper-boat'), null, { timeout: 8000 }).catch(() => {})
+  await page.waitForSelector('iframe'); await sleep(1600)
+  const lf = storyFrame()
+  const lr = await lf.evaluate(async () => ({
+    origin: self.origin,
+    parent: (() => { try { void parent.document; return 'REACHED' } catch { return 'blocked' } })(),
+    storage: (() => { try { void localStorage; return 'REACHED' } catch { return 'blocked' } })(),
+    csp: !!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),
+    fetch: await fetch('https://example.com/').then(() => 'REACHED', () => 'blocked'),
+    title: document.title,
+  }))
+  check(lr.origin === 'null' && lr.parent === 'blocked' && lr.storage === 'blocked' && lr.csp && lr.fetch === 'blocked' && /Paper Boat/.test(lr.title),
+    'on this device: the book plays from a hashed Blob in the opaque sandbox — parent, storage, and network all blocked', 'local book isolation: ' + JSON.stringify(lr))
+  await back(); await sleep(500)
+  await page.goto(BASE + '#/'); await sleep(700)
+  const yours = await page.locator('#row-yours + .row .story-card:has-text("The Paper Boat") .badge:has-text("Yours")').count()
+  check(yours === 1, 'shelf: "Your books" row shows it with a "Yours" badge (library rows untouched)', 'your-books row: ' + yours)
+  await page.click('#row-yours + .row a.story-card:has-text("The Paper Boat")'); await sleep(500)
+  await page.click('button:has-text("Remove from this device")'); await sleep(900)
+  const left = await page.locator('.story-card:has-text("The Paper Boat")').count()
+  check(left === 0, 'on this device: "Remove" takes the book off the shelf (progress stays in the archive)', 'still on shelf: ' + left)
+
+  // sharing: a QR code for any book
+  await page.goto(BASE + '#/story/neon-horizon'); await sleep(500)
+  await page.click('button:has-text("Share")'); await page.waitForSelector('.qr svg[role="img"]')
+  await contrast('share dialog')
+  await page.click('.dialog button:has-text("Close")'); await sleep(200)
+
+  // the Studio's one-screen publish + hosting centre (no token: honest prompts)
+  await page.goto(BASE + '#/admin'); await sleep(600)
+  check(await page.locator('.action-card:has-text("Publish a book")').count() === 1, 'studio home: action cards (Publish a book · Advanced · Hosting · Connection) above the dashboard', 'studio action cards missing')
+  await page.goto(BASE + '#/admin/publish'); await page.waitForSelector('.template'); await sleep(300)
+  await a11yBasics('studio publish')
+  await contrast('studio publish')
+  await page.goto(BASE + '#/admin/hosting'); await sleep(500)
+  const host = await page.locator('main').textContent()
+  check(/Free hosting on GitHub Pages/.test(host ?? '') && /Fix it for me/.test(host ?? ''), 'hosting centre: GitHub Pages checklist + one-click fix (runs with the owner\'s own token)', 'hosting page text missing')
+  await a11yBasics('studio hosting')
+  await contrast('studio hosting')
+  await shot('24-hosting')
+
   /* ── 13. mobile ───────────────────────────────────────────────────── */
   const mob = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })
   const mp = await mob.newPage()
@@ -466,6 +539,8 @@ try {
   await sleep(300)
   const ovf = await mp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   check(ovf <= 1, 'mobile 390px: no horizontal overflow on the shelf', 'mobile horizontal overflow ' + ovf + 'px')
+  const tabs = await mp.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabbar a')].map((a) => a.textContent.trim()), sidebar: getComputedStyle(document.querySelector('.sidebar')).display }))
+  check(tabs.tabs.length === 5 && tabs.tabs.includes('Add') && tabs.sidebar === 'none', 'mobile: bottom tab bar (Library · Archive · Add · Offline · Settings), no sidebar', 'mobile tabs: ' + JSON.stringify(tabs))
   await contrast('mobile shelf', mp)
   await mp.screenshot({ path: 'shots/21-mobile-shelf.png' })
   await mp.goto(BASE + '#/play/the-keeper-of-wend-light'); await mp.waitForSelector('iframe'); await sleep(1800)

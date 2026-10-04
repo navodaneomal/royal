@@ -12,7 +12,8 @@ is furniture; the stories are the paintings.
 │ apps/web — React PWA, hash-routed, served from its own origin                    │
 │   Reader: shelf · story detail · immersive player · archive · offline centre ·   │
 │           settings · onboarding · command palette           (i18n catalogue)     │
-│   Admin Studio (#/admin, lazy chunk): dashboard · New Book wizard · releases     │
+│   Workshop (#/add + Studio → Publish, lazy): text → book → this device / publish │
+│   Studio (#/admin, lazy chunk): home · dashboard · wizard · releases · hosting   │
 │   Local data plane: IndexedDB (progress, timelines, notes, downloads, drafts)    │
 │   Boot: /config.json → { storyOrigin, supabase?, githubRepo? }   (ADR-0008)       │
 │ apps/mobile — the same build inside a Capacitor WebView (https://localhost)      │
@@ -129,4 +130,5 @@ ADR-0001 workspaces · 0002 local data plane · 0003 opaque offline + sandbox ·
 0004 plain CSS · **0005 Git as the CMS · 0006 isomorphic publishing core ·
 0007 declarative builder · 0008 runtime config · 0009 protocol 1.1 ·
 0010 Capacitor Android · 0011 compatibility gate + migrations ·
-0012 GitHub Pages + blob-frame CSP**.
+0012 GitHub Pages + blob-frame CSP · 0013 workshop, books on this
+device, hosting centre**.

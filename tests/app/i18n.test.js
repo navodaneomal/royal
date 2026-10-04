@@ -15,7 +15,7 @@ describe('string catalogue', () => {
       for (const m of readFileSync(file, 'utf8').matchAll(/\bt\(\s*'([\w.]+)'/g)) used.add(m[1])
     }
     // `t('rating.' + value)` style prefixes: every value the code can produce must exist
-    const dynamic = { 'rating.': ['everyone', 'teen', 'mature'], 'status.': ['unread', 'inProgress', 'finished'] }
+    const dynamic = { 'rating.': ['everyone', 'teen', 'mature'], 'status.': ['unread', 'inProgress', 'finished'], 'accent.': ['brass', 'indigo', 'forest', 'rose', 'plum'], 'theme.': ['manuscript', 'terminal', 'watercolor', 'noir', 'minimal'] }
     const missing = [...used].flatMap((k) => (k.endsWith('.') ? (dynamic[k] ?? ['?']).map((v) => k + v) : [k])).filter((k) => !(k in en))
     expect(missing).toEqual([])
     expect(used.size).toBeGreaterThan(150)

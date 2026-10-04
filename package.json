@@ -25,7 +25,8 @@
     "verify": "node verify.mjs",
     "doctor": "node packages/story-cli/src/storyframe.mjs doctor",
     "storyframe": "node packages/story-cli/src/storyframe.mjs",
-    "protocol:sync": "node scripts/sync-shared-protocol.mjs"
+    "protocol:sync": "node scripts/sync-shared-protocol.mjs",
+    "setup:pages": "node scripts/setup-pages.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

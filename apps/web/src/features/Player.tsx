@@ -106,14 +106,15 @@ export function Player({ slug, mode, channel = 'production' }: { slug: string; m
       const prefs = await getPreferences()
 
       // pick the frame source + mode
-      const wantOffline = mode === 'offline' || !navigator.onLine
+      // books added on this device only exist as a verified Blob — same opaque path as offline
+      const wantOffline = mode === 'offline' || !navigator.onLine || !!story.local
       let src: string | null = null
       let bridgeMode: 'cross-origin-online' | 'opaque-offline'
       if (wantOffline && (await offlineReady(release.releaseId))) {
         src = await offlineEntryUrl(release.releaseId)
         blobRef.current = src
         bridgeMode = 'opaque-offline'
-      } else if (wantOffline && !navigator.onLine) {
+      } else if ((wantOffline && !navigator.onLine) || story.local) {
         setState('error'); setDiag('offline-not-downloaded'); return
       } else {
         src = storyUrl(release.path)

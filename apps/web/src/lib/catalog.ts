@@ -7,6 +7,7 @@
    against are that release's, never whatever was published last. */
 import { cacheRegistry, cachedRegistry } from './store'
 import { config } from './config'
+import { listLocalBooks } from './localBooks'
 
 export const storyBase = () => config().storyOrigin.replace(/\/$/, '')
 /** @deprecated v1 name — the base can change after boot, so call storyBase() */
@@ -16,7 +17,7 @@ export const isCrossOrigin = () => {
   try { return storyBase().startsWith('http') && new URL(storyBase()).origin !== location.origin }
   catch { return false }
 }
-export const storyUrl = (path: string) => `${storyBase()}/${String(path).replace(/^\//, '')}`
+export const storyUrl = (path: string) => /^(data:|blob:|https?:)/.test(String(path)) ? String(path) : `${storyBase()}/${String(path).replace(/^\//, '')}`
 
 export type Release = {
   releaseId: string; version: string; path: string; publishedAt: string; status: string; packageHash: string
@@ -28,6 +29,14 @@ export type CatalogStory = {
   channels: Record<string, { releaseId: string; disabled: boolean }>
   releases: Release[]
   meta: any
+  /** added on this device (#/add) — not in the library's registry */
+  local?: boolean
+}
+
+/** Registry stories first; a book on this device never shadows a published one. */
+async function withLocal(stories: CatalogStory[]) {
+  const local = await listLocalBooks()
+  return [...stories, ...local.filter((l) => !stories.some((s) => s.slug === l.slug || s.storyId === l.storyId))]
 }
 export type ChannelRelease = Release & { meta: any; disabled: boolean; channel: string }
 
@@ -41,13 +50,13 @@ export async function catalog(force = false): Promise<{ stories: CatalogStory[];
     const res = await fetch(storyUrl('registry.json'), { cache: 'no-store' })
     if (!res.ok) throw new Error('registry ' + res.status)
     const reg = await res.json()
-    memo = { at: Date.now(), stories: reg.stories ?? [], generatedAt: reg.generatedAt ?? null }
+    memo = { at: Date.now(), stories: await withLocal(reg.stories ?? []), generatedAt: reg.generatedAt ?? null }
     cacheRegistry(reg).catch(() => {})
     listeners.forEach((fn) => fn(memo!.stories))
     return { stories: memo.stories, offline: false }
   } catch (e: any) {
     const reg = await cachedRegistry()
-    return { stories: reg?.stories ?? [], offline: true, error: String(e?.message ?? e) }
+    return { stories: await withLocal(reg?.stories ?? []), offline: true, error: String(e?.message ?? e) }
   }
 }
 

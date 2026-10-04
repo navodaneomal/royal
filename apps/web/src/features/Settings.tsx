@@ -11,6 +11,7 @@ import { useApp } from '../context'
 import { t, LOCALES } from '../lib/i18n'
 import { CloudAccount } from './CloudAccount'
 import { cloudEnabled } from '../lib/cloud'
+import { ACCENTS, ACCENT_KEYS, applyAccent, currentAccent, type AccentKey } from '../lib/themes'
 
 function Sel({ p, save, k, label, hint, options }: { p: any; save: (patch: any) => void; k: string; label: string; hint?: string; options: [string, string][] }) {
   return (
@@ -33,6 +34,7 @@ export function SettingsView() {
   const [backupFor, setBackupFor] = useState('')
   const [statsOn, setStatsOn] = useState(false)
   const [ambient, setAmbientOn] = useState(false)
+  const [accent, setAccentState] = useState<AccentKey>(currentAccent())
 
   useEffect(() => {
     (async () => {
@@ -53,8 +55,14 @@ export function SettingsView() {
     <main className="page">
       <h1>{t('settings.title')}</h1>
       <p className="lede">{t('settings.lede')}</p>
-
-      <h2>{t('settings.reading')}</h2>
+      <div className="settings-layout">
+      <nav className="settings-index" aria-label={t('settings.index')}>
+        {[['sec-reading', t('settings.reading')], ['sec-look', t('settings.look')], ['sec-motion', t('settings.motionSound')], ['sec-puzzles', t('settings.puzzles')], ['sec-privacy', t('settings.privacy')], ['sec-account', t('settings.account')], ['sec-recovery', t('settings.recovery')]]
+          .map(([id, label]) => <a key={id} href={`#/settings`} onClick={(e) => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>{label}</a>)}
+      </nav>
+      <div>
+      <section className="set-card" id="sec-reading" aria-labelledby="sec-reading-h">
+      <h2 id="sec-reading-h">{t('settings.reading')}</h2>
       <Sel p={p} save={save} k="colorScheme" label={t('settings.scheme')} options={[['system', t('scheme.system')], ['light', t('scheme.light')], ['dark', t('scheme.dark')]]} />
       <div className="setting">
         <label htmlFor="set-scale">{t('settings.textSize', { pct: Math.round(p.textScale * 100) })}</label>
@@ -67,8 +75,26 @@ export function SettingsView() {
       <Sel p={p} save={save} k="contrast" label={t('settings.contrast')} options={[['normal', t('contrast.normal')], ['more', t('contrast.more')]]} />
       {LOCALES.length > 1 && <Sel p={p} save={save} k="locale" label={t('settings.language')} hint={t('settings.languageHint')} options={LOCALES.map((l) => [l, l] as [string, string])} />}
       <div className="btn-row"><button className="btn secondary" onClick={openOnboarding}>{t('settings.onboarding')}</button></div>
+      </section>
 
-      <h2>{t('settings.motionSound')}</h2>
+      <section className="set-card" id="sec-look" aria-labelledby="sec-look-h">
+      <h2 id="sec-look-h">{t('settings.look')}</h2>
+      <div className="setting">
+        <span className="label" id="accent-label" style={{ fontWeight: 600 }}>{t('settings.accent')}</span>
+        <span className="hint">{t('settings.accentHint')}</span>
+        <div className="accent-picker" role="group" aria-labelledby="accent-label">
+          {ACCENT_KEYS.map((k) => (
+            <button key={k} type="button" aria-pressed={accent === k} style={{ ['--swatch' as any]: ACCENTS[k].deco }}
+              onClick={async () => { setAccentState(k); applyAccent(k); await setKv('shellAccent', k) }}>
+              <i aria-hidden="true" /> {t('accent.' + k)}
+            </button>
+          ))}
+        </div>
+      </div>
+      </section>
+
+      <section className="set-card" id="sec-motion" aria-labelledby="sec-motion-h">
+      <h2 id="sec-motion-h">{t('settings.motionSound')}</h2>
       <Sel p={p} save={save} k="motion" label={t('settings.motion')} hint={t('settings.motionHint')}
         options={[['full', t('motion.full')], ['reduced', t('motion.reduced')], ['none', t('motion.none')]]} />
       <Sel p={p} save={save} k="sound" label={t('settings.sound')} options={[['muted', t('settings.soundMuted')], ['on', t('settings.soundOn')]]} />
@@ -81,11 +107,17 @@ export function SettingsView() {
         <span className="hint">{t('settings.ambientHint')}</span>
       </div>
 
-      <h2>{t('settings.puzzles')}</h2>
+      </section>
+
+      <section className="set-card" id="sec-puzzles" aria-labelledby="sec-puzzles-h">
+      <h2 id="sec-puzzles-h">{t('settings.puzzles')}</h2>
       <Sel p={p} save={save} k="puzzleAssist" label={t('settings.puzzleMode')} hint={t('settings.puzzleHint')}
         options={[['standard', t('onboard.puzzleStandard')], ['untimed', t('onboard.puzzleUntimed')], ['guided', t('onboard.puzzleGuided')]]} />
 
-      <h2>{t('settings.privacy')}</h2>
+      </section>
+
+      <section className="set-card" id="sec-privacy" aria-labelledby="sec-privacy-h">
+      <h2 id="sec-privacy-h">{t('settings.privacy')}</h2>
       <div className="setting">
         <label className="switch">
           <input type="checkbox" checked={!!me?.analyticsConsent}
@@ -115,7 +147,10 @@ export function SettingsView() {
         }}>{t('settings.deleteAll')}</button>
       </div>
 
-      <h2>{t('settings.account')}</h2>
+      </section>
+
+      <section className="set-card" id="sec-account" aria-labelledby="sec-account-h">
+      <h2 id="sec-account-h">{t('settings.account')}</h2>
       {cloudEnabled() ? <CloudAccount /> : (
         <>
           <p className="callout">{t('settings.guest', { id: me?.id ?? '' })}</p>
@@ -123,7 +158,10 @@ export function SettingsView() {
         </>
       )}
 
-      <h2>{t('settings.recovery')}</h2>
+      </section>
+
+      <section className="set-card" id="sec-recovery" aria-labelledby="sec-recovery-h">
+      <h2 id="sec-recovery-h">{t('settings.recovery')}</h2>
       <p className="small muted">{t('settings.recoveryHint')} <a href="#/collections">{t('nav.archive')}</a></p>
       {timelines.map(({ timeline, progress }) => (
         <div key={timeline.id} className="setting">
@@ -145,6 +183,9 @@ export function SettingsView() {
         </div>
       ))}
       {timelines.length === 0 && <p className="hint">{t('settings.noProgress')}</p>}
+      </section>
+      </div>
+      </div>
     </main>
   )
 }

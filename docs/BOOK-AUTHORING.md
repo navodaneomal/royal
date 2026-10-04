@@ -6,9 +6,36 @@ HTML file that carries its own world (fonts, colours, rules) and runs in a
 sandbox, while the reader's shelf keeps their progress, archive, and
 accessibility profile. You never write a build script.
 
-**The fastest path:** Admin Studio → *New book* → *Quick Book* → paste or drop
-your text → publish. The rest of this guide explains what that does, and how
-to go further.
+**The fastest path — one screen, no folder, no code:**
+
+| you want to… | go to | what happens |
+|---|---|---|
+| try a book yourself | **Add a book** (`#/add`, any reader) | drop / write / pick a starter → **Read it now**. Kept privately in that browser, in the same sealed sandbox as every story; works offline. |
+| publish for every reader | **Studio → Publish** (`#/admin/publish`) | the same screen + **Publish for everyone** (one commit to `stories/<slug>/`; tick "skip beta" to put it straight on the shelf). |
+| control every field | **Studio → Advanced** (`#/admin/new`) | the 8-step wizard: crafted and prebuilt packages, the cover studio, the full accessibility checklist. |
+
+The workshop fills in what you should not have to think about: title (from
+your `#` heading), slug, version (next patch when you update a book), a cover
+matched to the theme, accessibility declarations the Quick Book runtime
+guarantees, and chapter ids written back into `book.md` so renaming a
+chapter later can never strand a reader. It runs the same builder, release
+gate, and release-id hash as CI (`composeQuickBook` in
+`@storyframe/publishing`).
+
+**Plain text works.** A `.txt` (or a Word file without headings) is read the
+way manuscripts are typed: a short first line followed by a blank line is the
+title; lines such as `Chapter 1`, `CHAPTER TWO: The Storm`, `Part III`,
+`Book One`, `Prologue`, `Epilogue`, or a lone `IV` / `12.` start chapters;
+`* * *` or `---` is a scene break. Anything that would accidentally read as
+Markdown (`# 1 fan`, `- a dash`) is escaped so it shows exactly as written.
+
+**Starters:** a blank book, plus five complete short stories — *The Locked
+Study* (Manuscript, a clue and an accusation), *The Lantern Fox*
+(Watercolour), *Signal from Kepler* (Terminal), *Rain on Ninth Street* (Noir),
+*Small Hours* (Minimal, poems) — each one passes the release gate and shows
+the directives in use.
+
+The rest of this guide explains what the workshop does, and how to go further.
 
 - [1. Choose a lane](#1-choose-a-lane)
 - [2. The book folder](#2-the-book-folder)

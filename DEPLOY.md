@@ -23,6 +23,24 @@ GitHub Actions                      builds, validates, publishes, deploys
 
 ## 0. GitHub Pages — the whole thing with only a GitHub account
 
+> **Easiest:** run the app locally (`npm run build && npm run preview`), open
+> **Studio → Hosting** (`http://localhost:4173/#/admin/hosting`), paste a one-day
+> *setup token* from the pre-filled link on that page, press **Check**, then
+> **Fix it for me**. It does steps 1–3 below for you and shows your links and a
+> QR code. From a terminal instead:
+>
+> ```
+> GITHUB_TOKEN=github_pat_… npm run setup:pages -- <you>/<repo> --fix
+> ```
+>
+> Neither ever deletes or rewrites anything: it creates `main` from your
+> current code, makes it the default branch, switches Pages to "GitHub
+> Actions", and starts the first deployment. The setup token needs Contents,
+> Actions, Pages, and Administration (write) on that one repository — make it
+> expire in a day. Publishing afterwards needs only Contents + Actions.
+
+The same steps by hand:
+
 The repository ships `.github/workflows/pages.yml`. It builds the library
 from the `content` branch (or from `stories/` before your first publish) and
 deploys it with GitHub's own Pages actions — after every publish, promote,

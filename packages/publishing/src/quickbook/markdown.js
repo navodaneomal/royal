@@ -49,6 +49,9 @@ export function parseAttrs(src) {
 export function renderInline(text, warn = () => {}) {
   const codes = []
   let s = String(text).replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000` })
+  // backslash escapes (CommonMark): "\#", "\*", "\-" … show the character itself
+  const escaped = []
+  s = s.replace(/\\([\\`*_{}[\]()#+\-.!:>~|])/g, (_, ch) => { escaped.push(ch); return `\u0001${escaped.length - 1}\u0001` })
   s = escapeHtml(s)
   // links: internal anchors only; anything else keeps its words, loses its URL
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, href) => {
@@ -62,6 +65,7 @@ export function renderInline(text, warn = () => {}) {
   s = s.replace(/ {2,}\n|\\\n/g, '<br>')
   s = s.replace(/\n/g, ' ')
   s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${escapeHtml(codes[Number(i)])}</code>`)
+  s = s.replace(/\u0001(\d+)\u0001/g, (_, i) => escapeHtml(escaped[Number(i)]))
   return s
 }
 

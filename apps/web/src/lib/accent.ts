@@ -21,6 +21,18 @@ export function readableOn(hex: string, bg: string) {
   return toHex(r, g, b)
 }
 
+/** Linear mix of two hex colours (t = share of b). */
+export function mixHex(a: string, b: string, t: number) {
+  const [x, y] = [hexRgb(a), hexRgb(b)]
+  return toHex(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t)
+}
+
+/** Ink for text that sits on a hero tinted with `accent` (the radial tint peaks near 30%, so test there with margin). */
+export function heroInk(accent: string, dark: boolean) {
+  const card = dark ? '#211D18' : '#FFFCF6'
+  return readableOn(readableOn(accent, mixHex(card, accent, 0.36)), card)
+}
+
 async function sample(url: string): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image()

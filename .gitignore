@@ -16,7 +16,7 @@ deploy/single-origin/
 deploy/pages/
 deploy/*.zip
 deploy/*.apk
-storyframe-v2.zip
+storyframe-v*.zip
 # Capacitor native project output
 apps/mobile/android/app/build/
 apps/mobile/android/.gradle/

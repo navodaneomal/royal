@@ -7,13 +7,14 @@ import './app.css'
 import { Ctx } from './context'
 import { loadConfig, config, configInfo } from './lib/config'
 import { getPreferences, setPreferences, onPreferencesChange, profile, getKv, setKv, primaryProgress } from './lib/store'
-import { catalog, onCatalog, type CatalogStory } from './lib/catalog'
+import { catalog, onCatalog, coverUrl, releaseFor, type CatalogStory } from './lib/catalog'
 import { refreshDownloads } from './lib/downloads'
 import { useRoute, navigate } from './lib/router'
 import { setLocale, t } from './lib/i18n'
 import { hasAdminToken, onAdminChange } from './lib/admin'
 import { initPwa, onPwaChange, canInstall, promptInstall, updateReady, applyUpdate, isIos, isStandalone } from './lib/pwa'
 import { setAmbient } from './lib/ambient'
+import { applyAccent, type AccentKey } from './lib/themes'
 import { Shelf } from './features/Shelf'
 import { StoryDetail } from './features/StoryDetail'
 import { Player } from './features/Player'
@@ -23,9 +24,10 @@ import { OfflineCentre } from './features/Offline'
 import { CommandPalette } from './components/CommandPalette'
 import { Shortcuts } from './components/Shortcuts'
 import { Onboarding } from './components/Onboarding'
-import { SearchIcon, DownloadIcon } from './components/Icons'
+import { SearchIcon, DownloadIcon, LibraryIcon, ArchiveIcon, OfflineIcon, SettingsIcon, StudioIcon, PlusIcon } from './components/Icons'
 
 const AdminStudio = lazy(() => import('./features/admin/AdminStudio'))
+const Composer = lazy(() => import('./features/compose/Composer'))
 export { useApp } from './context'
 
 function applyPrefsToDocument(p: any) {
@@ -39,9 +41,12 @@ function applyPrefsToDocument(p: any) {
   root.dataset.fontmode = p.fontMode
   root.dataset.motion = p.motion === 'full' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : p.motion
   root.style.setProperty('--text-scale', String(p.textScale))
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', scheme === 'dark' ? '#191612' : '#F5F1E8'))
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', scheme === 'dark' ? '#14120F' : '#F6F2EA'))
+  applyAccent()          // the reader's shell tint follows scheme + contrast
   setLocale(p.locale ?? 'en')
 }
+
+const NAV_ICONS: Record<string, React.FC<{ size?: number }>> = { '': LibraryIcon, collections: ArchiveIcon, offline: OfflineIcon, settings: SettingsIcon, admin: StudioIcon, add: PlusIcon }
 
 function App() {
   const { parts, query } = useRoute()
@@ -74,6 +79,7 @@ function App() {
     (async () => {
       await loadConfig()
       await profile()
+      applyAccent(await getKv('shellAccent', 'brass') as AccentKey)
       const p = await getPreferences()
       setPrefsState(p); applyPrefsToDocument(p)
       setInstallDismissed(await getKv('installDismissed', false))
@@ -114,7 +120,7 @@ function App() {
       if (e.key === '/' && parts[0] === undefined) { e.preventDefault(); document.getElementById('shelf-search')?.focus(); return }
       if (e.key === 'g') { gPending.current = Date.now(); return }
       if (Date.now() - gPending.current < 1200) {
-        const to = ({ s: '/', a: '/collections', o: '/offline', t: '/settings' } as Record<string, string>)[e.key]
+        const to = ({ s: '/', a: '/collections', o: '/offline', t: '/settings', n: '/add' } as Record<string, string>)[e.key]
         gPending.current = 0
         if (to) { e.preventDefault(); navigate(to) }
       }
@@ -142,57 +148,98 @@ function App() {
   const inPlayer = route === 'play'
   const nav: [string, string][] = [['', t('nav.shelf')], ['collections', t('nav.archive')], ['offline', t('nav.offline')], ['settings', t('nav.settings')]]
   if (admin) nav.push(['admin', t('nav.admin')])
+  const tabs: [string, string][] = [['', t('nav.shelf')], ['collections', t('nav.archive')], ['add', t('nav.addShort')], ['offline', t('nav.offline')], ['settings', t('nav.settings')]]
   const showInstall = !inPlayer && !isStandalone() && !installDismissed && (pwa.install || isIos()) && !!cont
   const dismissInstall = () => { setInstallDismissed(true); setKv('installDismissed', true) }
+  const contStory = cont ? stories?.find((s) => s.slug === cont.slug) : null
+  const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'
+  const navLink = ([r, label]: [string, string], cls?: string) => {
+    const Icon = NAV_ICONS[r] ?? LibraryIcon
+    return <a key={r} className={cls} href={`#/${r}`} aria-current={route === r ? 'page' : undefined}><Icon /> <span>{label}</span></a>
+  }
 
   return (
     <Ctx.Provider value={ctx}>
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus() }}>{t('skip')}</a>
-      {pwa.update && !inPlayer && (
-        <div className="banner" role="status">
-          {t('banner.update')}
-          <button className="btn small" onClick={applyUpdate}>{t('banner.updateNow')}</button>
-        </div>
-      )}
-      {catalogError && !inPlayer && !/^\/?stories-host$/.test(configInfo().config.storyOrigin) && (
-        <div className="banner warn" role="alert">{t('banner.config', { origin: config().storyOrigin })}</div>
-      )}
-      {!inPlayer && (
-        <header className="chrome">
-          <a className="brand" href="#/"><img src="icon.svg" alt="" /> {t('app.name')}</a>
-          <nav aria-label={t('nav.main')}>
-            {nav.map(([r, label]) => (
-              <a key={r} href={`#/${r}`} aria-current={route === r ? 'page' : undefined}>{label}</a>
-            ))}
-          </nav>
-          <div className="tools">
-            {pwa.install && !isStandalone() && (
-              <button className="icon-btn" onClick={() => promptInstall()} aria-label={t('chrome.installLabel')}><DownloadIcon /> <span className="label">{t('chrome.install')}</span></button>
+      <div className={inPlayer ? undefined : 'app'}>
+        {!inPlayer && (
+          <aside className="sidebar">
+            <a className="brand" href="#/"><img src="icon.svg" alt="" /> {t('app.name')}</a>
+            <nav className="side-nav" aria-label={t('nav.main')}>
+              <ul>{nav.map((n) => <li key={n[0]}>{navLink(n)}</li>)}</ul>
+              <p className="side-label">{t('nav.create')}</p>
+              <ul><li>{navLink(['add', t('nav.add')])}</li></ul>
+            </nav>
+            <div className="side-foot">
+              {contStory && (
+                <a className="mini-continue" href={`#/play/${contStory.slug}`} aria-label={t('nav.continueLabel', { title: contStory.title })}>
+                  <img src={coverUrl(contStory, releaseFor(contStory))} alt="" />
+                  <span><span>{t('shelf.continueKicker')}</span><strong>{contStory.title}</strong></span>
+                </a>
+              )}
+              <button className="side-search" onClick={() => setOverlay('palette')} aria-label={t('chrome.searchLabel')}>
+                <SearchIcon /> {t('chrome.search')} <kbd>{mod} K</kbd>
+              </button>
+              {pwa.install && !isStandalone() && (
+                <button className="side-search" onClick={() => promptInstall()} aria-label={t('chrome.installLabel')}><DownloadIcon /> {t('chrome.install')}</button>
+              )}
+            </div>
+          </aside>
+        )}
+        <div className="main-col">
+          {pwa.update && !inPlayer && (
+            <div className="banner" role="status">
+              {t('banner.update')}
+              <button className="btn small" onClick={applyUpdate}>{t('banner.updateNow')}</button>
+            </div>
+          )}
+          {catalogError && !inPlayer && !/^\/?stories-host$/.test(configInfo().config.storyOrigin) && (
+            <div className="banner warn" role="alert">{t('banner.config', { origin: config().storyOrigin })}</div>
+          )}
+          {!inPlayer && (
+            <header className="chrome topbar">
+              <a className="brand" href="#/"><img src="icon.svg" alt="" /> {t('app.name')}</a>
+              <div className="tools">
+                {pwa.install && !isStandalone() && (
+                  <button className="icon-btn" onClick={() => promptInstall()} aria-label={t('chrome.installLabel')}><DownloadIcon /> <span className="label">{t('chrome.install')}</span></button>
+                )}
+                {admin && <a className="icon-btn" href="#/admin" aria-label={t('nav.admin')}><StudioIcon /> <span className="label">{t('nav.admin')}</span></a>}
+                <button className="icon-btn" onClick={() => setOverlay('palette')} aria-label={t('chrome.searchLabel')}>
+                  <SearchIcon /> <span className="label">{t('chrome.search')}</span>
+                </button>
+              </div>
+            </header>
+          )}
+          {showInstall && (
+            <div className="banner" role="region" aria-label={t('chrome.install')}>
+              {pwa.install ? t('banner.install') : t('banner.installIos')}
+              {pwa.install && <button className="btn small" onClick={() => promptInstall().then(dismissInstall)}>{t('chrome.install')}</button>}
+              <button className="btn small secondary" onClick={dismissInstall}>{t('banner.dismiss')}</button>
+            </div>
+          )}
+          <div id="main" tabIndex={-1} style={{ outline: 'none' }}>
+            {route === '' && <Shelf />}
+            {route === 'story' && <StoryDetail slug={parts[1]} />}
+            {route === 'play' && <Player slug={parts[1]} mode={parts[2]} channel={query.get('channel') === 'beta' && admin ? 'beta' : 'production'} />}
+            {route === 'collections' && <Collections />}
+            {route === 'offline' && <OfflineCentre />}
+            {route === 'settings' && <SettingsView />}
+            {route === 'add' && (
+              <Suspense fallback={<main className="page"><h1>{t('compose.title')}</h1><p className="lede">{t('compose.loading')}</p></main>}>
+                <Composer mode="reader" />
+              </Suspense>
             )}
-            <button className="icon-btn" onClick={() => setOverlay('palette')} aria-label={t('chrome.searchLabel')}>
-              <SearchIcon /> <span className="label">{t('chrome.search')}</span> <kbd className="label">{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} K</kbd>
-            </button>
+            {route === 'admin' && (
+              <Suspense fallback={<main className="page"><h1>Studio</h1><p className="lede">Loading…</p></main>}>
+                <AdminStudio parts={parts.slice(1)} />
+              </Suspense>
+            )}
           </div>
-        </header>
-      )}
-      {showInstall && (
-        <div className="banner" role="region" aria-label={t('chrome.install')}>
-          {pwa.install ? t('banner.install') : t('banner.installIos')}
-          {pwa.install && <button className="btn small" onClick={() => promptInstall().then(dismissInstall)}>{t('chrome.install')}</button>}
-          <button className="btn small secondary" onClick={dismissInstall}>{t('banner.dismiss')}</button>
         </div>
-      )}
-      <div id="main" tabIndex={-1} style={{ outline: 'none' }}>
-        {route === '' && <Shelf />}
-        {route === 'story' && <StoryDetail slug={parts[1]} />}
-        {route === 'play' && <Player slug={parts[1]} mode={parts[2]} channel={query.get('channel') === 'beta' && admin ? 'beta' : 'production'} />}
-        {route === 'collections' && <Collections />}
-        {route === 'offline' && <OfflineCentre />}
-        {route === 'settings' && <SettingsView />}
-        {route === 'admin' && (
-          <Suspense fallback={<main className="page"><h1>Admin Studio</h1><p className="lede">Loading…</p></main>}>
-            <AdminStudio parts={parts.slice(1)} />
-          </Suspense>
+        {!inPlayer && (
+          <nav className="tabbar" aria-label={t('nav.main')}>
+            {tabs.map((n) => navLink(n, n[0] === 'add' ? 'tab-add' : undefined))}
+          </nav>
         )}
       </div>
       <div className="toasts" role="status" aria-live="polite">

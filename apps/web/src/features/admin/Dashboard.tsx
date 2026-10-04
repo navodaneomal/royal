@@ -42,7 +42,7 @@ export function Dashboard() {
     (!f.action || a.action === f.action) && (!f.slug || a.slug === f.slug) && (!f.actor || String(a.actor ?? '').toLowerCase().includes(f.actor.toLowerCase()))
     && (!f.from || a.at >= f.from) && (!f.to || a.at <= f.to + 'T23:59:59Z')), [audit, f])
   const actions = [...new Set(audit.map((a) => a.action))].sort()
-  const list = stories ?? []
+  const list = (stories ?? []).filter((s) => !s.local)   // books on readers' devices are not the library's
 
   return (
     <div>

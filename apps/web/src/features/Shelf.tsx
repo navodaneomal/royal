@@ -6,12 +6,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context'
 import { releaseFor, coverUrl, position, type CatalogStory } from '../lib/catalog'
 import { primaryProgress, allDownloads } from '../lib/store'
-import { accentFor, readableOn } from '../lib/accent'
+import { accentFor, heroInk } from '../lib/accent'
 import { fuzzySearch } from '../lib/fuzzy'
 import { track } from '../lib/telemetry'
 import { t } from '../lib/i18n'
 import { Cover } from '../components/Cover'
-import { SearchIcon, FilterIcon, ShelfIllustration } from '../components/Icons'
+import { SearchIcon, FilterIcon, ShelfIllustration, PlusIcon } from '../components/Icons'
 
 type Filters = { length: string[]; rating: string[]; access: string[]; status: string[]; offline: boolean }
 const NO_FILTERS: Filters = { length: [], rating: [], access: [], status: [], offline: false }
@@ -20,6 +20,18 @@ const lengthOf = (s: CatalogStory) => {
   const max = releaseFor(s)?.meta?.estimatedMinutes?.total?.[1] ?? s.meta?.estimatedMinutes?.total?.[1] ?? 0
   return max < 30 ? 'short' : max <= 90 ? 'medium' : 'long'
 }
+const greetingKey = (h = new Date().getHours()) => h < 5 ? 'shelf.greet.night' : h < 12 ? 'shelf.greet.morning' : h < 18 ? 'shelf.greet.afternoon' : h < 23 ? 'shelf.greet.evening' : 'shelf.greet.night'
+
+/** Honest progress: one segment per checkpoint — reached, here, or still ahead. Never a percentage. */
+export function Segments({ index, total, done, label }: { index: number; total: number; done?: boolean; label?: string }) {
+  if (!total || total < 2) return null
+  return (
+    <span className="segments" aria-hidden={label ? undefined : true} role={label ? 'img' : undefined} aria-label={label}>
+      {Array.from({ length: total }, (_, i) => <i key={i} className={done || i < index ? 'on' : i === index ? 'here' : ''} />)}
+    </span>
+  )
+}
+
 const loadFilters = (): Filters => { try { return { ...NO_FILTERS, ...JSON.parse(sessionStorage.getItem('sf.filters') ?? '{}') } } catch { return NO_FILTERS } }
 
 export function Shelf() {
@@ -43,6 +55,7 @@ export function Shelf() {
   const downloadedSlugs = useMemo(() => new Set([...downloads.values()].map((d: any) => d.slug)), [downloads])
   const statusOf = (s: CatalogStory) => { const p = byStory.get(s.storyId); return !p ? 'unread' : p.progress.completion === 'completed' ? 'finished' : 'inProgress' }
 
+  const spotlight = !progress.length ? [...visible].filter((s) => releaseFor(s) && !s.local).sort((a, b) => (releaseFor(b)?.publishedAt ?? '').localeCompare(releaseFor(a)?.publishedAt ?? ''))[0] ?? null : null
   const heroEntry = progress.find((p) => p.progress.completion !== 'completed' && visible.some((s) => s.storyId === p.progress.storyId)) ?? progress[0]
   const hero = heroEntry ? visible.find((s) => s.storyId === heroEntry.progress.storyId) : null
   useEffect(() => {
@@ -78,16 +91,26 @@ export function Shelf() {
   const unread = visible.filter((s) => statusOf(s) === 'unread')
     .sort((a, b) => (releaseFor(b)?.publishedAt ?? '').localeCompare(releaseFor(a)?.publishedAt ?? ''))
   const finished = visible.filter((s) => statusOf(s) === 'finished')
-  const downloaded = visible.filter((s) => downloads.has(releaseFor(s)?.releaseId ?? ''))
+  const downloaded = visible.filter((s) => !s.local && downloads.has(releaseFor(s)?.releaseId ?? ''))
+  const yours = visible.filter((s) => s.local)
 
   return (
     <main className="page">
-      <h1>{t('shelf.title')}</h1>
-      <p className="lede">{t('shelf.lede')}{catalogOffline && <> <strong>{t('shelf.offline')}</strong></>}</p>
+      <div className="greeting">
+        <div>
+          <p className="eyebrow">{t(greetingKey())}</p>
+          <h1>{t('shelf.title')}</h1>
+          <p className="lede">{t('shelf.lede')}{catalogOffline && <> <strong>{t('shelf.offline')}</strong></>}</p>
+        </div>
+        <div className="actions">
+          <a className="btn secondary" href="#/add"><PlusIcon /> {t('nav.add')}</a>
+        </div>
+      </div>
 
       {stories === null && <ShelfSkeleton />}
 
       {hero && !filtering && <Hero story={hero} entry={heroEntry} accent={accent} />}
+      {!hero && spotlight && !filtering && <Spotlight story={spotlight} />}
 
       {visible.length > 0 && (
         <>
@@ -132,11 +155,17 @@ export function Shelf() {
           {inProgress.length > 1 && <Row id="row-continue" title={t('shelf.row.continue')}>{inProgress.map(card)}</Row>}
           {unread.length > 0 && unread.length < visible.length && <Row id="row-new" title={t('shelf.row.new')}>{unread.map(card)}</Row>}
           {finished.length > 0 && <Row id="row-finished" title={t('shelf.row.finished')}>{finished.map(card)}</Row>}
+          {yours.length > 0 && <Row id="row-yours" title={t('shelf.row.yours')}>{yours.map(card)}</Row>}
           {downloaded.length > 0 && <Row id="row-downloaded" title={t('shelf.row.downloaded')}>{downloaded.map(card)}</Row>}
           {visible.length > 0 && (
             <section aria-labelledby="row-all">
               <h2 id="row-all">{t('shelf.row.all')}</h2>
-              <div className="grid-books shelf">{visible.map(card)}</div>
+              <div className="grid-books shelf">
+                {visible.map(card)}
+                <a className="book add-tile-wrap" href="#/add" aria-label={t('shelf.addTileLabel')} style={{ textDecoration: 'none' }}>
+                  <span className="add-tile"><PlusIcon /><strong>{t('nav.add')}</strong><span>{t('shelf.addTile')}</span></span>
+                </a>
+              </div>
             </section>
           )}
         </>
@@ -172,7 +201,7 @@ function Hero({ story, entry, accent }: { story: CatalogStory; entry: any; accen
   const done = entry.progress.completion === 'completed'
   const cover = coverUrl(story, rel)
   const dark = document.documentElement.dataset.scheme === 'dark'
-  const ink = accent ? readableOn(accent, dark ? '#241F19' : '#FBF8F1') : undefined
+  const ink = accent ? heroInk(accent, dark) : undefined
   return (
     <section aria-label={t('shelf.continueKicker')} className="hero continue-card"
       style={{ ['--hero-accent' as any]: accent ?? undefined, ['--hero-ink' as any]: ink, ['--hero-cover' as any]: `url("${cover}")` }}>
@@ -181,8 +210,34 @@ function Hero({ story, entry, accent }: { story: CatalogStory; entry: any; accen
         <p className="kicker">{t('shelf.continueKicker')}</p>
         <h2>{story.title}</h2>
         <p className="where">{done ? t('shelf.finishedLine') : t('shelf.position', { label: pos.label, n: pos.index + 1, total: pos.total })}</p>
+        <Segments index={pos.index} total={pos.total} done={done} />
         <div className="btn-row" style={{ margin: 0 }}>
           <a className="btn" href={`#/play/${story.slug}`}>{t('shelf.continue')}</a>
+          <a className="btn secondary" href={`#/story/${story.slug}`}>{t('shelf.details')}</a>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Spotlight({ story }: { story: CatalogStory }) {
+  const rel = releaseFor(story)
+  const cover = coverUrl(story, rel)
+  const [accent, setAccent] = useState<string | null>(null)
+  useEffect(() => { accentFor(story.storyId, rel?.accent ?? story.accent, cover).then(setAccent) }, [story.storyId])
+  const dark = document.documentElement.dataset.scheme === 'dark'
+  const ink = accent ? heroInk(accent, dark) : undefined
+  const est = rel?.meta?.estimatedMinutes?.total
+  return (
+    <section aria-label={t('shelf.spotlight')} className="hero spotlight"
+      style={{ ['--hero-accent' as any]: accent ?? undefined, ['--hero-ink' as any]: ink, ['--hero-cover' as any]: `url("${cover}")` }}>
+      <Cover className="cover-3d" src={cover} title={story.title} />
+      <div style={{ minWidth: 0 }}>
+        <p className="kicker">{t('shelf.spotlight')}</p>
+        <h2>{story.title}</h2>
+        <p className="where">{rel?.tagline ?? story.tagline}{est ? ` · ${t('shelf.spotlightMinutes', { min: est[0], max: est[1] })}` : ''}</p>
+        <div className="btn-row" style={{ margin: 0 }}>
+          <a className="btn" href={`#/play/${story.slug}`}>{t('shelf.spotlightStart')}</a>
           <a className="btn secondary" href={`#/story/${story.slug}`}>{t('shelf.details')}</a>
         </div>
       </div>
@@ -204,14 +259,15 @@ function BookCard({ story, progress, downloaded }: { story: CatalogStory; progre
           {rel?.disabled && <span className="badge bad">{t('badge.paused')}</span>}
           {!rel && <span className="badge warn">{t('badge.noRelease')}</span>}
           {newEdition && <span className="badge info">{t('badge.newEdition')}</span>}
-          {!progress && recent && <span className="badge">{t('badge.new')}</span>}
+          {story.local && <span className="badge info">{t('badge.yours')}</span>}
+          {!progress && recent && !story.local && <span className="badge">{t('badge.new')}</span>}
         </span>
       </span>
       <h3>{story.title}</h3>
-      {status === 'inProgress' && pos ? <p className="where">{pos.label}</p> : <p className="tag">{story.tagline}</p>}
+      {status === 'inProgress' && pos ? <><p className="where">{pos.label}</p><Segments index={pos.index} total={pos.total} /></> : <p className="tag">{story.tagline}</p>}
       <span className="badges">
         <span className={`badge ${status === 'finished' ? 'good' : ''}`}>{t('status.' + status)}</span>
-        {downloaded && <span className="badge good">{t('badge.offline')}</span>}
+        {downloaded && !story.local && <span className="badge good">{t('badge.offline')}</span>}
       </span>
     </a>
   )

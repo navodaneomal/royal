@@ -25,7 +25,9 @@ export function OfflineCentre() {
   }
   useEffect(() => { load() }, [])
 
-  const list = stories ?? []
+  const list = (stories ?? []).filter((s) => !s.local)
+  const localIds = new Set((stories ?? []).filter((s) => s.local).flatMap((s) => s.releases.map((r) => r.releaseId)))
+  const localBooks = (stories ?? []).filter((s) => s.local)
   const downloadedIds = new Set(items.map((d) => d.releaseId))
   const eligible = list.filter((s) => { const r = releaseFor(s); return r && !r.disabled && r.meta?.offlineEligible && !downloadedIds.has(r.releaseId) })
   const onlineOnly = list.filter((s) => { const r = releaseFor(s); return r && !r.meta?.offlineEligible })
@@ -73,9 +75,9 @@ export function OfflineCentre() {
       </section>
 
       <h2>{t('offline.downloaded')}</h2>
-      {!items.length && <p className="small muted">{t('offline.none')}</p>}
+      {!items.filter((d) => !localIds.has(d.releaseId)).length && <p className="small muted">{t('offline.none')}</p>}
       <ul className="list">
-        {items.map((d) => {
+        {items.filter((d) => !localIds.has(d.releaseId)).map((d) => {
           const s = list.find((x) => x.slug === d.slug)
           const prod = s && releaseFor(s)
           const current = prod?.releaseId === d.releaseId
@@ -95,6 +97,26 @@ export function OfflineCentre() {
           )
         })}
       </ul>
+
+      {localBooks.length > 0 && (
+        <>
+          <h2>{t('offline.yourBooks')}</h2>
+          <p className="small muted">{t('offline.yourBooksHint')}</p>
+          <ul className="list">
+            {localBooks.map((s) => {
+              const r = releaseFor(s)
+              const d = items.find((x) => x.releaseId === r?.releaseId)
+              return (
+                <li key={s.storyId}>
+                  <Cover className="thumb" src={coverUrl(s, r)} title={s.title} />
+                  <span className="grow"><strong>{s.title}</strong><br /><span className="small muted">{d ? fmtBytes(d.bytes) : '—'} · {t('offline.yourBookBadge')}</span></span>
+                  <a className="btn small secondary" href={`#/story/${s.slug}`}>{t('shelf.details')}</a>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
 
       {eligible.length > 0 && (
         <>

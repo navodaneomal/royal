@@ -1,22 +1,22 @@
-# STATUS — honest scope (v2)
+# STATUS — honest scope (v2 + v3 interface)
 
-Date: 2026-10-03 · Version: 2.0.0 + GitHub Pages hosting · Data plane: local (Supabase adapter optional, not activated here)
+Date: 2026-10-04 · Version: 2.0.0 + GitHub Pages hosting + v3 interface · Data plane: local (Supabase adapter optional, not activated here)
 
 Real summary lines from the final run of this tree:
 
 ```
 $ npm test
- Test Files  13 passed (13)
-      Tests  111 passed (111)
+ Test Files  16 passed (16)
+      Tests  145 passed (145)
 
 $ npm run typecheck
 > tsc --noEmit                      (0 errors)
 
 $ npm run verify                 (production headers enforced, app CSP included)
-ALL 89 CHECKS PASSED            (single-origin + cross-origin passes; shots/ written)
+ALL 109 CHECKS PASSED           (single-origin + cross-origin passes; shots/ written)
 
 $ VERIFY_DIR=deploy/pages VERIFY_BASE_PATH=/royal/ npm run verify
-ALL 92 CHECKS PASSED            (the GitHub Pages bundle under /royal/, CSP from <meta>)
+ALL 112 CHECKS PASSED           (the GitHub Pages bundle under /royal/, CSP from <meta>)
 ```
 
 Legend — ✅ implemented **and exercised by an automated check** (the Playwright
@@ -142,6 +142,19 @@ Cloudflare account, a Supabase project, a Windows machine, an Android device) ·
 | `android.yml` APK artifact on GitHub | 📦 | not run on GitHub |
 | Store costs stated honestly; TWA (Bubblewrap) documented | done | DEPLOY.md §12, ADR-0010 |
 
+## v3 — interface, one-screen workshop, books on this device, hosting centre (2026-10-04)
+
+| Item | State | Evidence |
+|---|---|---|
+| New shell: sidebar on desktop, bottom tab bar on phones, greeting + "Start here" spotlight, progress segments, story-page backdrop, settings as cards | ✅ | audit: sidebar and tab bar per breakpoint, the spotlight, a11y + measured contrast on every screen (light, dark, more-contrast), no horizontal overflow at 390 px |
+| Five reader-chosen accent colours | ✅ | `tests/app/themes.test.ts` reads `app.css` and checks every ink/status/accent on every surface (≥4.5:1; ≥7:1 more-contrast); audit re-tints to Indigo live and measures |
+| Add a book (`#/add`): starter templates, `.md` / `.docx` / `.txt` import, editor with directive buttons, live release gate, live cover | ✅ | audit: a starter and a plain `.txt` both pass the gate in the browser (title + 3 chapters found); unit tests: plain-text rules, all 6 starters validate, determinism, id locking |
+| Books on this device: "Read it now" → hashed Blob → opaque sandbox; "Your books" row; remove | ✅ | audit: inside the frame `origin` is `null`, parent/storage/network blocked, story CSP present; row + "Yours" badge; removal |
+| Studio → Publish (one screen) with "Publish for everyone" + "skip beta" | ✅ screen · 📦 GitHub | audit renders it (a11y + contrast); the commit/dispatch path needs a token and a real repo |
+| Hosting centre + `npm run setup:pages` (checklist, Fix it for me, links, QR) | ✅ screen · 🟡 logic · 📦 GitHub | audit renders it; `tests/publishing/github-hosting.test.js` drives inspect/fix against a fake GitHub (order of calls, refusals, permission hints). **Never run against your repository from here** |
+| QR "Open on your phone" share | ✅ | audit opens the dialog (SVG QR, contrast) |
+| Markdown backslash escapes in Quick Books (`\#`, `\*`, …) | 🟡 | unit tests |
+
 ## Phase 6 — Tests
 
 - vitest: 13 files, 102 tests. Covers the reducer, migrations, import planning, the bridge (1.0 and 1.1), the validator, the builder, Quick Books, themes and covers, compat and diffs, `_headers`, registry ops, commit planning, docx import, scaffolding, runtime config, i18n, and the shared-protocol copy for Deno.
@@ -157,6 +170,9 @@ Cloudflare account, a Supabase project, a Windows machine, an Android device) ·
 - ⬜ Translated story content (the shell catalogue is i18n-ready; only English exists)
 
 ## Known limits, stated plainly
+
+- **Books on this device live in that browser only.** Clearing site data removes them. "Download the book folder" in the workshop is the backup.
+- **The reader bundle is about 6 KB gzip larger** than v2 (104 KB, from 97.7 KB) because of the new shell, icons and strings. The workshop, QR code and Studio load only when opened.
 
 - **Publishing from the Admin Studio waits for CI.** A new book appears once the publish workflow finishes: minutes, not seconds. It hasn't been timed here because the workflow hasn't run on GitHub yet. That wait is the cost of $0 hosting and one source of truth.
 - **GitHub Pages** can't send headers: no `frame-ancestors` (other sites could frame the app). Everything is cached for 10 minutes. Commercial use isn't allowed. Cloudflare is the upgrade (DEPLOY.md §0).

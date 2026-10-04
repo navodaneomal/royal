@@ -11,17 +11,22 @@ import { downloadRelease, offlineReady, deleteDownload } from '../lib/downloads'
 import { track } from '../lib/telemetry'
 import { t, fmtDate, fmtBytes } from '../lib/i18n'
 import { Cover } from '../components/Cover'
+import { removeLocalBook } from '../lib/localBooks'
+const ShareDialog = React.lazy(() => import('../components/QrCode').then((m) => ({ default: m.ShareDialog })))
+import { Segments } from './Shelf'
+import { PlayIcon, DownloadIcon, QrIcon } from '../components/Icons'
 
 const ACCESS: [string, string][] = [['keyboard', 'access.keyboard'], ['screenReader', 'access.screenReader'], ['reducedMotion', 'access.reducedMotion'], ['untimedMode', 'access.untimed'], ['nonAudioAlternative', 'access.noAudio'], ['captions', 'access.captions']]
 
 export function StoryDetail({ slug }: { slug: string }) {
-  const { toast, stories } = useApp()
+  const { toast, stories, refreshCatalog } = useApp()
   const story = stories?.find((x) => x.slug === slug) ?? null
   const release = story ? releaseFor(story) : null
   const [progress, setProgress] = useState<any>(null)
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notes, setNotes] = useState<Note[]>([])
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     if (!story) return
@@ -65,55 +70,70 @@ export function StoryDetail({ slug }: { slug: string }) {
       toast(t('detail.downloadFailed', { error: e.message }))
     } finally { setBusy(false) }
   }
-  async function onShare() {
-    const url = /^https?:/.test(shareUrl) ? shareUrl : new URL(shareUrl, location.href).href
-    try {
-      if (navigator.share) await navigator.share({ title, text: story!.tagline, url })
-      else { await navigator.clipboard.writeText(url); toast(t('detail.shareCopied')) }
-    } catch { /* reader cancelled */ }
-  }
+  // the share card when the library publishes one; the app's own deep link otherwise
+  const shareTarget = story.local ? null : (/^https?:/.test(shareUrl) ? shareUrl : new URL(shareUrl, location.href).href)
+  const deepLink = new URL(`#/story/${story.slug}`, location.href).href
+  const herePos = snap ? Math.max(0, checkpoints.findIndex((c: any) => c.id === here)) : 0
 
   return (
     <main className="page">
-      <div className="detail">
-        <div className="cover"><Cover src={coverUrl(story, release)} title={title} alt={`Cover of ${title}`} /></div>
-        <div>
-          <h1>{title}</h1>
-          <p className="lede" style={{ marginBottom: '1rem' }}>{release?.tagline ?? story.tagline}</p>
+      <section className="detail-hero" style={{ ['--hero-cover' as any]: `url("${coverUrl(story, release)}")` }}>
+        <div className="detail">
+          <div className="cover"><Cover src={coverUrl(story, release)} title={title} alt={`Cover of ${title}`} /></div>
+          <div style={{ minWidth: 0 }}>
+            {story.local && <p className="eyebrow">{t('detail.localKicker')}</p>}
+            <h1>{title}</h1>
+            <p className="lede" style={{ marginBottom: '1rem' }}>{release?.tagline ?? story.tagline}</p>
 
-          {disabled && <p className="callout bad" role="status">{t('detail.paused')}</p>}
-          {newEdition && !disabled && (
-            <p className="callout info" role="status">{needsMigration ? t('detail.newEditionMigrated', { version: release!.version }) : t('detail.newEdition', { version: release!.version })}</p>
-          )}
+            {disabled && <p className="callout bad" role="status">{t('detail.paused')}</p>}
+            {newEdition && !disabled && (
+              <p className="callout info" role="status">{needsMigration ? t('detail.newEditionMigrated', { version: release!.version }) : t('detail.newEdition', { version: release!.version })}</p>
+            )}
+            {snap && checkpoints.length > 1 && (
+              <div style={{ maxWidth: '24rem', margin: '0 0 0.4rem' }}>
+                <Segments index={herePos} total={checkpoints.length} done={progress?.completion === 'completed'} label={t('detail.mapCount', { reached: reachedCount, total: checkpoints.length })} />
+              </div>
+            )}
 
-          <div className="btn-row">
-            {!disabled && release && (
-              <a className="btn" href={`#/play/${story.slug}`}
-                onClick={() => track('story_launch_requested', { story_id: story.storyId, release_id: release.releaseId, online: navigator.onLine })}>
-                {progress ? t('detail.continue') : t('detail.start')}
-              </a>
-            )}
-            {release && m.offlineEligible && !ready && (
-              <button className="btn secondary" onClick={onDownload} disabled={busy}>
-                {busy ? t('detail.verifying') : t('detail.download', { size: fmtBytes(size) })}
-              </button>
-            )}
-            {release && ready && (
-              <>
-                <a className="btn secondary" href={`#/play/${story.slug}/offline`}>{t('detail.playOffline')}</a>
-                <button className="btn danger" onClick={async () => { await deleteDownload(release.releaseId); setReady(false); toast(t('detail.removed')) }}>
-                  {t('detail.removeDownload')}
+            <div className="btn-row">
+              {!disabled && release && (
+                <a className="btn big" href={`#/play/${story.slug}`}
+                  onClick={() => track('story_launch_requested', { story_id: story.storyId, release_id: release.releaseId, online: navigator.onLine })}>
+                  <PlayIcon /> {progress ? t('detail.continue') : t('detail.start')}
+                </a>
+              )}
+              {release && !story.local && m.offlineEligible && !ready && (
+                <button className="btn secondary" onClick={onDownload} disabled={busy}>
+                  <DownloadIcon /> {busy ? t('detail.verifying') : t('detail.download', { size: fmtBytes(size) })}
                 </button>
-              </>
-            )}
-            <button className="btn ghost" onClick={onShare}>{t('detail.share')}</button>
-          </div>
+              )}
+              {release && !story.local && ready && (
+                <>
+                  <a className="btn secondary" href={`#/play/${story.slug}/offline`}>{t('detail.playOffline')}</a>
+                  <button className="btn danger" onClick={async () => { await deleteDownload(release.releaseId); setReady(false); toast(t('detail.removed')) }}>
+                    {t('detail.removeDownload')}
+                  </button>
+                </>
+              )}
+              {story.local && (
+                <button className="btn danger" onClick={async () => {
+                  if (!confirm(t('detail.localRemoveConfirm', { title }))) return
+                  await removeLocalBook(story.storyId); await refreshCatalog(); toast(t('detail.localRemoved')); location.hash = '#/'
+                }}>{t('detail.localRemove')}</button>
+              )}
+              {!story.local && <button className="btn ghost" onClick={() => setSharing(true)}><QrIcon /> {t('detail.share')}</button>}
+            </div>
 
+            <div className="a11y-badges" aria-label={t('detail.access')}>
+              {ACCESS.filter(([k]) => acc[k]).map(([k, label]) => <span key={k} className="badge good">✓ {t(label)}</span>)}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="detail-body">
+        <div style={{ minWidth: 0 }}>
           {synopsis && <p className="synopsis">{synopsis}</p>}
-
-          <div className="a11y-badges" aria-label={t('detail.access')}>
-            {ACCESS.filter(([k]) => acc[k]).map(([k, label]) => <span key={k} className="badge good">✓ {t(label)}</span>)}
-          </div>
 
           <h2>{t('detail.map')}</h2>
           {snap ? (
@@ -142,10 +162,21 @@ export function StoryDetail({ slug }: { slug: string }) {
             </>
           )}
 
+          {notes.length > 0 && (
+            <>
+              <h2>{t('detail.yourNotes')}</h2>
+              <ul className="list">
+                {notes.map((n) => <li key={n.id}><span className="grow"><span className="small muted">{n.kind === 'bookmark' ? t('notes.bookmark') : t('notes.note')} · {n.label ?? n.anchorId} · {fmtDate(n.at)}</span>{n.text && <><br />{n.text}</>}</span></li>)}
+              </ul>
+            </>
+          )}
+        </div>
+
+        <aside aria-label={t('detail.facts')}>
           <h2>{t('detail.facts')}</h2>
           <ul className="facts">
             {est && <li><b>{t('detail.session')}</b><span>{t('detail.sessionValue', { first: est.firstSession, min: est.total?.[0], max: est.total?.[1] })}</span></li>}
-            <li><b>{t('detail.storage')}</b><span>{m.offlineEligible ? t('detail.storageOffline', { size: fmtBytes(size) }) : t('detail.storageOnline', { size: fmtBytes(size) })}</span></li>
+            <li><b>{t('detail.storage')}</b><span>{story.local ? t('detail.storageLocal', { size: fmtBytes(size) }) : m.offlineEligible ? t('detail.storageOffline', { size: fmtBytes(size) }) : t('detail.storageOnline', { size: fmtBytes(size) })}</span></li>
             {release && <li><b>{t('detail.edition')}</b><span>{t('detail.editionValue', { version: release.version, date: fmtDate(release.publishedAt) })} · <code className="mono">{release.releaseId}</code></span></li>}
             <li><b>{t('detail.languages')}</b><span>{(m.languages ?? ['en']).join(', ')}</span></li>
             {progress && <li><b>Revision</b><span>revision {progress.revision} · {progress.completion === 'completed' ? t('status.finished') : t('status.inProgress')}</span></li>}
@@ -158,17 +189,9 @@ export function StoryDetail({ slug }: { slug: string }) {
               {(m.content?.warnings ?? []).length ? t('detail.themes', { list: m.content.warnings.join(', ') }) : t('detail.noNotes')}
             </p>
           </details>
-
-          {notes.length > 0 && (
-            <>
-              <h2>{t('detail.yourNotes')}</h2>
-              <ul className="list">
-                {notes.map((n) => <li key={n.id}><span className="grow"><span className="small muted">{n.kind === 'bookmark' ? t('notes.bookmark') : t('notes.note')} · {n.label ?? n.anchorId} · {fmtDate(n.at)}</span>{n.text && <><br />{n.text}</>}</span></li>)}
-              </ul>
-            </>
-          )}
-        </div>
+        </aside>
       </div>
+      {sharing && <React.Suspense fallback={null}><ShareDialog title={title} url={shareTarget ?? deepLink} text={story.tagline} onClose={() => setSharing(false)} /></React.Suspense>}
     </main>
   )
 }
