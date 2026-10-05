@@ -90,10 +90,12 @@ export function audit(entry) {
 /* ── build ──────────────────────────────────────────────────────────── */
 /** Declarative build: story folder → package/ (never runs story code). */
 export function buildStory(storyDir) {
-  const sdk = readSdk()
-  if (!sdk) return { ok: false, errors: ['SDK not built — run `npm run sdk:build`'], warnings: [], notes: [] }
   const source = readTree(storyDir)
-  const r = buildPackage({ source, sdk })
+  let linked = false   // a linked book is only a card — it needs no SDK (ADR-0014)
+  try { linked = !!JSON.parse(toText(source.get('storyframe.json') ?? new Uint8Array())).link } catch { /* the builder reports bad JSON */ }
+  const sdk = readSdk()
+  if (!sdk && !linked) return { ok: false, errors: ['SDK not built — run `npm run sdk:build`'], warnings: [], notes: [] }
+  const r = buildPackage({ source, sdk: sdk ?? '' })
   const pkgDir = join(storyDir, 'package')
   if (r.ok) {
     rmSync(pkgDir, { recursive: true, force: true })

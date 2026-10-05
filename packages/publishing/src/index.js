@@ -23,6 +23,7 @@ export { parseFrontMatter, stringifyFrontMatter } from './quickbook/frontmatter.
 export { parseBook, renderInline, slugify, escapeHtml, parseAttrs } from './quickbook/markdown.js'
 export { THEMES, THEME_NAMES, themeCss } from './themes/index.js'
 export { textToQuickBookMarkdown } from './quickbook/plaintext.js'
-export { composeQuickBook, stampComposed, nextVersion, lockChapterIds, THEME_COVER } from './compose.js'
+export { composeQuickBook, stampComposed, nextVersion, lockChapterIds, THEME_COVER, composeLinkedBook, LINK_COVER } from './compose.js'
 export { STARTER_BOOKS, starterBook } from './templates.js'
 export { inspectHosting, fixHosting, tokenLinks, pagesUrl, PAGES_WORKFLOW } from './github-hosting.js'
+export { smartLink, titleFromUrl, linkedManifest, parseLinkList, linkedFrameOrigins, isAllowedLinkUrl, LINK_KINDS, LINK_OPEN } from './link.js'

@@ -25,6 +25,11 @@ function StudioHome() {
           <strong>Publish a book</strong>
           <span>One screen: drop a .md, .docx, or .txt (or write one), check it, preview it, publish it.</span>
         </a>
+        <a className="action-card primary" href="#/admin/link">
+          <span className="ic"><GlobeIcon /></span>
+          <strong>Link a book</strong>
+          <span>Already hosted somewhere? Paste the link, add a cover — readers tap it and the book opens. One link or a whole list.</span>
+        </a>
         <a className="action-card" href="#/admin/new">
           <span className="ic"><TemplateIcon /></span>
           <strong>Advanced wizard</strong>
@@ -48,8 +53,8 @@ function StudioHome() {
 
 export default function AdminStudio({ parts }: { parts: string[] }) {
   const [section = '', arg] = parts
-  if (section === 'publish') {
-    return <Suspense fallback={<main className="page"><h1>Publish a book</h1></main>}><Composer mode="studio" /></Suspense>
+  if (section === 'publish' || section === 'link') {
+    return <Suspense fallback={<main className="page"><h1>Publish a book</h1></main>}><Composer mode="studio" start={section === 'link' ? 'link' : 'make'} /></Suspense>
   }
   const tabs: [string, string][] = [['', 'Home'], ['publish', 'Publish'], ['new', 'Advanced'], ['hosting', 'Hosting'], ['connect', 'Connection']]
   const title = section === 'new' ? 'New book' : section === 'book' ? 'Release management' : section === 'connect' ? 'Connection' : section === 'hosting' ? 'Hosting' : 'Studio'

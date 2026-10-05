@@ -55,8 +55,10 @@ export function storiesHeaders({ appOrigins = [] } = {}) {
  *   storyOrigins: where story frames load from ('self' covers single-origin mode)
  *   connectOrigins: extra fetch targets (Supabase URL; GitHub API is always allowed for the Admin Studio)
  */
-export function appCsp({ storyOrigins = [], connectOrigins = [] } = {}) {
+export function appCsp({ storyOrigins = [], connectOrigins = [], frameOrigins = [] } = {}) {
   const stories = originList(storyOrigins)
+  // embedded linked books (ADR-0014): only the exact origins published in the registry
+  const frames = originList(frameOrigins).filter((o) => !stories.includes(o))
   const connect = originList(['https://api.github.com', ...stories, ...connectOrigins])
   // Offline playback and the Admin preview run stories from blob: URLs, and a
   // blob: document INHERITS the policy of the document that created it — so
@@ -74,7 +76,7 @@ export function appCsp({ storyOrigins = [], connectOrigins = [] } = {}) {
     "media-src 'self' data: blob:",
     "font-src 'self' data:",
     `connect-src 'self' ${connect.join(' ')}`.trim(),
-    `frame-src 'self' blob: ${stories.join(' ')}`.trim(),
+    `frame-src 'self' blob: ${[...stories, ...frames].join(' ')}`.trim(),
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",
@@ -94,8 +96,8 @@ export function appCspMeta(o = {}) {
   return `<meta http-equiv="Content-Security-Policy" content="${content}" />`
 }
 
-export function appHeaders({ storyOrigins = [], connectOrigins = [] } = {}) {
-  const csp = appCsp({ storyOrigins, connectOrigins })
+export function appHeaders({ storyOrigins = [], connectOrigins = [], frameOrigins = [] } = {}) {
+  const csp = appCsp({ storyOrigins, connectOrigins, frameOrigins })
   const security = {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -119,8 +121,8 @@ export function appHeaders({ storyOrigins = [], connectOrigins = [] } = {}) {
  * Starter mode — one project serves the app AND /stories-host/. Every story
  * runs in the opaque sandbox (same origin ⇒ never allow-same-origin).
  */
-export function singleOriginHeaders({ connectOrigins = [] } = {}) {
-  const app = appHeaders({ storyOrigins: [], connectOrigins })
+export function singleOriginHeaders({ connectOrigins = [], frameOrigins = [] } = {}) {
+  const app = appHeaders({ storyOrigins: [], connectOrigins, frameOrigins })
   return app + '\n' + [
     '# content plane, served under /stories-host/',
     rule('/stories-host/packages/*', {

@@ -12,6 +12,7 @@ import { track } from '../lib/telemetry'
 import { t, fmtDate, fmtBytes } from '../lib/i18n'
 import { Cover } from '../components/Cover'
 import { removeLocalBook } from '../lib/localBooks'
+import { linkFor, marks as loadMarks, onMarks, markOpened, setFinished, hostOf, openTarget, type Mark } from '../lib/linked'
 const ShareDialog = React.lazy(() => import('../components/QrCode').then((m) => ({ default: m.ShareDialog })))
 import { Segments } from './Shelf'
 import { PlayIcon, DownloadIcon, QrIcon } from '../components/Icons'
@@ -27,6 +28,12 @@ export function StoryDetail({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false)
   const [notes, setNotes] = useState<Note[]>([])
   const [sharing, setSharing] = useState(false)
+  const [mark, setMark] = useState<Mark | undefined>(undefined)
+  useEffect(() => {
+    if (!story) return
+    loadMarks().then((m) => setMark(m[story.storyId]))
+    return onMarks((m) => setMark(m[story.storyId])) as any
+  }, [story?.storyId])
 
   useEffect(() => {
     if (!story) return
@@ -74,6 +81,9 @@ export function StoryDetail({ slug }: { slug: string }) {
   const shareTarget = story.local ? null : (/^https?:/.test(shareUrl) ? shareUrl : new URL(shareUrl, location.href).href)
   const deepLink = new URL(`#/story/${story.slug}`, location.href).href
   const herePos = snap ? Math.max(0, checkpoints.findIndex((c: any) => c.id === here)) : 0
+  const link = linkFor(story)
+  const linkTarget = link ? openTarget(story, link) : null
+  const linkHost = link ? hostOf(link.url) : ''
 
   return (
     <main className="page">
@@ -96,18 +106,35 @@ export function StoryDetail({ slug }: { slug: string }) {
             )}
 
             <div className="btn-row">
-              {!disabled && release && (
+              {link && !disabled && (
+                <>
+                  {linkTarget!.newTab ? (
+                    <a className="btn big" href={link.url} target="_blank" rel="noopener noreferrer" onClick={() => markOpened(story.storyId)}>
+                      <PlayIcon /> {t('linked.open')} ↗<span className="sr"> {t('linked.newTab')}</span>
+                    </a>
+                  ) : (
+                    <>
+                      <a className="btn big" href={`#/play/${story.slug}`} onClick={() => markOpened(story.storyId)}><PlayIcon /> {t('linked.readHere')}</a>
+                      <a className="btn secondary" href={link.url} target="_blank" rel="noopener noreferrer" onClick={() => markOpened(story.storyId)}>{t('linked.openOn', { host: linkHost })} ↗<span className="sr"> {t('linked.newTab')}</span></a>
+                    </>
+                  )}
+                  <button className="btn secondary" aria-pressed={!!mark?.finishedAt} onClick={() => setFinished(story.storyId, !mark?.finishedAt)}>
+                    {mark?.finishedAt ? t('linked.markUnfinished') : t('linked.markFinished')}
+                  </button>
+                </>
+              )}
+              {!link && !disabled && release && (
                 <a className="btn big" href={`#/play/${story.slug}`}
                   onClick={() => track('story_launch_requested', { story_id: story.storyId, release_id: release.releaseId, online: navigator.onLine })}>
                   <PlayIcon /> {progress ? t('detail.continue') : t('detail.start')}
                 </a>
               )}
-              {release && !story.local && m.offlineEligible && !ready && (
+              {release && !link && !story.local && m.offlineEligible && !ready && (
                 <button className="btn secondary" onClick={onDownload} disabled={busy}>
                   <DownloadIcon /> {busy ? t('detail.verifying') : t('detail.download', { size: fmtBytes(size) })}
                 </button>
               )}
-              {release && !story.local && ready && (
+              {release && !link && !story.local && ready && (
                 <>
                   <a className="btn secondary" href={`#/play/${story.slug}/offline`}>{t('detail.playOffline')}</a>
                   <button className="btn danger" onClick={async () => { await deleteDownload(release.releaseId); setReady(false); toast(t('detail.removed')) }}>
@@ -135,8 +162,14 @@ export function StoryDetail({ slug }: { slug: string }) {
         <div style={{ minWidth: 0 }}>
           {synopsis && <p className="synopsis">{synopsis}</p>}
 
-          <h2>{t('detail.map')}</h2>
-          {snap ? (
+          {link && (
+            <p className="callout info linked-note">
+              <span>{t('linked.note', { host: linkHost })}{mark?.openedAt ? ' ' + t('linked.lastOpened', { date: fmtDate(mark.openedAt) }) : ''}</span>
+            </p>
+          )}
+
+          {!link && <h2>{t('detail.map')}</h2>}
+          {link ? null : snap ? (
             <>
               <p className="small muted">{t('detail.mapCount', { reached: reachedCount, total: checkpoints.length })}</p>
               <ol className="cp-map">
@@ -176,7 +209,9 @@ export function StoryDetail({ slug }: { slug: string }) {
           <h2>{t('detail.facts')}</h2>
           <ul className="facts">
             {est && <li><b>{t('detail.session')}</b><span>{t('detail.sessionValue', { first: est.firstSession, min: est.total?.[0], max: est.total?.[1] })}</span></li>}
-            <li><b>{t('detail.storage')}</b><span>{story.local ? t('detail.storageLocal', { size: fmtBytes(size) }) : m.offlineEligible ? t('detail.storageOffline', { size: fmtBytes(size) }) : t('detail.storageOnline', { size: fmtBytes(size) })}</span></li>
+            {link && <li><b>{t('linked.hostedOn')}</b><span>{linkHost} · {t('linked.kind.' + (link.kind ?? 'web'))}{link.open === 'embed' ? ' · ' + t('linked.embedded') : ''}</span></li>}
+            {link?.author && <li><b>{t('linked.author')}</b><span>{link.author}</span></li>}
+            {!link && <li><b>{t('detail.storage')}</b><span>{story.local ? t('detail.storageLocal', { size: fmtBytes(size) }) : m.offlineEligible ? t('detail.storageOffline', { size: fmtBytes(size) }) : t('detail.storageOnline', { size: fmtBytes(size) })}</span></li>}
             {release && <li><b>{t('detail.edition')}</b><span>{t('detail.editionValue', { version: release.version, date: fmtDate(release.publishedAt) })} · <code className="mono">{release.releaseId}</code></span></li>}
             <li><b>{t('detail.languages')}</b><span>{(m.languages ?? ['en']).join(', ')}</span></li>
             {progress && <li><b>Revision</b><span>revision {progress.revision} · {progress.completion === 'completed' ? t('status.finished') : t('status.inProgress')}</span></li>}

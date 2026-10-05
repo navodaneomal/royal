@@ -125,7 +125,7 @@ try {
 
   /* ── 1. shelf ─────────────────────────────────────────────────────── */
   const cards = await page.locator('.grid-books.shelf .story-card').count()
-  check(cards === 3, 'shelf: all three stories on the Living Shelf', `shelf shows ${cards} stories, expected 3`)
+  check(cards === 4, 'shelf: all four books on the Living Shelf (three stories + one linked book)', `shelf shows ${cards} books, expected 4`)
   const shell = await page.evaluate(() => ({
     sidebar: getComputedStyle(document.querySelector('.sidebar')).display !== 'none',
     tabbar: getComputedStyle(document.querySelector('.tabbar')).display === 'none',
@@ -356,7 +356,7 @@ try {
   /* ── 10. admin studio: dashboard + wizard happy path ─────────────── */
   await page.goto(BASE + '#/admin'); await sleep(900)
   const rows = await page.locator('table.op').first().locator('tbody tr').count()
-  check(rows === 3, null, 'admin catalog rows: ' + rows)
+  check(rows === 4, null, 'admin catalog rows: ' + rows)
   const auditRows = await page.locator('table.op').nth(1).locator('tbody tr').count()
   check(auditRows >= 3, 'admin dashboard: books, channels, audit log with filters, health tiles', 'audit log not visible in admin')
   await a11yBasics('admin dashboard')
@@ -511,6 +511,40 @@ try {
   await page.click('button:has-text("Remove from this device")'); await sleep(900)
   const left = await page.locator('.story-card:has-text("The Paper Boat")').count()
   check(left === 0, 'on this device: "Remove" takes the book off the shelf (progress stays in the archive)', 'still on shelf: ' + left)
+
+  // linked books (ADR-0014): a book hosted elsewhere opens itself, safely
+  await page.goto(BASE + '#/'); await sleep(600)
+  const alice = page.locator('.grid-books.shelf .story-card.linked:has-text("Alice") a.book-link')
+  const al = { href: await alice.getAttribute('href'), target: await alice.getAttribute('target'), rel: await alice.getAttribute('rel') }
+  check(al.href === 'https://www.gutenberg.org/ebooks/11' && al.target === '_blank' && /noopener/.test(al.rel ?? '') && /noreferrer/.test(al.rel ?? ''),
+    'linked book: tapping the card opens the book on its own site (new tab, noopener + noreferrer, nothing shared)', 'linked card: ' + JSON.stringify(al))
+  await page.click('.grid-books.shelf .story-card.linked:has-text("Alice") a.details-link'); await sleep(500)
+  const open = await page.locator('a.btn:has-text("Open the book")').getAttribute('href')
+  await page.click('button:has-text("Mark as finished")'); await sleep(300)
+  await page.goto(BASE + '#/'); await sleep(500)
+  const aliceStatus = await page.locator('.grid-books.shelf .story-card.linked:has-text("Alice") .badge.good').textContent().catch(() => '')
+  check(open === 'https://www.gutenberg.org/ebooks/11' && /Finished/.test(aliceStatus ?? ''), 'linked book: detail page opens it, and "Mark as finished" is remembered on the shelf', 'linked detail/marks: ' + open + ' / ' + aliceStatus)
+  await contrast('shelf with a linked book')
+  await page.goto(BASE + '#/add/link'); await page.waitForSelector('[data-testid="link-url"]'); await sleep(200)
+  await page.fill('[data-testid="link-url"]', 'https://drive.google.com/file/d/1AbCdEf/view?usp=sharing')
+  await page.fill('[data-testid="link-title"]', 'The Harbour Atlas'); await sleep(400)
+  const lv = await page.locator('[data-testid="link-verdict"]').textContent()
+  await a11yBasics('add a book (link)')
+  await contrast('add a book (link)')
+  await shot('25-link-a-book')
+  await page.click('[data-testid="link-keep"]'); await sleep(900)
+  const mine = page.locator('#row-yours + .row .story-card.linked:has-text("The Harbour Atlas") a.book-link')
+  const mineHref = await mine.getAttribute('href').catch(() => null)
+  check(/Ready/.test(lv ?? '') && mineHref === 'https://drive.google.com/file/d/1AbCdEf/preview',
+    'link a book: a Drive share link becomes its viewer link, gets a cover, and lands on "Your books"', 'link on device: ' + lv + ' / ' + mineHref)
+  await page.goto(BASE + '#/add/link'); await sleep(300)
+  await page.click('button[role="tab"]:has-text("Many at once")')
+  await page.fill('[data-testid="link-list"]', 'The Lantern Fox | https://example.com/fox.pdf\nSmall Hours — Ada Byron | https://heyzine.com/flip-book/abc.html\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\nnot a link'); await sleep(400)
+  const bulk = await page.locator('.status-card h2').textContent()
+  check(/3 books ready/.test(bulk ?? ''), 'link a book: a pasted list of links → 3 ready cards (and the bad line is named)', 'bulk: ' + bulk)
+  // tidy up so later checks see the library as published
+  await page.goto(BASE + '#/story/the-harbour-atlas'); await sleep(400)
+  await page.click('button:has-text("Remove from this device")'); await sleep(600)
 
   // sharing: a QR code for any book
   await page.goto(BASE + '#/story/neon-horizon'); await sleep(500)

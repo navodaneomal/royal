@@ -14,7 +14,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createStoryBridge } from '@storyframe/bridge-host'
 import { useApp } from '../context'
-import { releaseFor, storyUrl, isCrossOrigin, checkpointLabel, manifestFor } from '../lib/catalog'
+import { releaseFor, storyUrl, isCrossOrigin, checkpointLabel, manifestFor, coverUrl } from '../lib/catalog'
+import { markOpened, hostOf } from '../lib/linked'
 import {
   primaryTimeline, commitOperation, getPreferences, onPreferencesChange, openConflicts, resolveConflict,
   prepareResume, addNote, getProgress, archiveCloudDivergence,
@@ -49,6 +50,8 @@ export function Player({ slug, mode, channel = 'production' }: { slug: string; m
   const [notice, setNotice] = useState<string | null>(channel === 'beta' ? t('player.beta') : null)
   const [fullscreen, setFullscreen] = useState(false)
   const [storyId, setStoryId] = useState('')
+  // linked books (ADR-0014): no bridge, no reader data — the other site in a locked frame, or a card that opens it
+  const [linked, setLinked] = useState<null | { url: string; open: string; host: string; local: boolean; cover: string }>(null)
 
   /* ── chrome: step aside while reading (fine pointers only) ───────── */
   const showChrome = (sticky = false) => {
@@ -96,6 +99,13 @@ export function Player({ slug, mode, channel = 'production' }: { slug: string; m
       const release = releaseFor(story, channel)
       if (!release) { setState('error'); setDiag(channel === 'beta' ? 'no-beta-release' : 'no-release'); return }
       if (release.disabled) { setState('disabled'); return }
+      const link = (release as any).link ?? release.meta?.link
+      if (link) {
+        setLinked({ url: link.url, open: link.open, host: hostOf(link.url), local: !!story.local, cover: coverUrl(story, release) })
+        markOpened(story.storyId)
+        setState('running')
+        return
+      }
 
       const manifest = manifestFor(story, release)
       const timeline = await primaryTimeline(story.storyId, channel)
@@ -249,9 +259,11 @@ export function Player({ slug, mode, channel = 'production' }: { slug: string; m
           <span className="title">{title}</span>
         </div>
         <div className="right">
-          <span className="savechip" data-state={saveState} role="status" aria-live="polite">{t(SAVE_KEYS[saveState])}</span>
-          {running && <button type="button" className="btn secondary small hide-sm" onClick={bookmark} aria-label={t('player.bookmarkLabel')}><BookmarkIcon /> <span className="hide-sm">{t('player.bookmark')}</span></button>}
-          <button type="button" className="btn secondary small" onClick={() => setDrawer(true)} aria-label={t('player.settingsLabel')} aria-haspopup="dialog">{t('player.settings')}</button>
+          {linked
+            ? <a className="btn secondary small" href={linked.url} target="_blank" rel="noopener noreferrer">{t('linked.openOn', { host: linked.host })} ↗<span className="sr"> {t('linked.newTab')}</span></a>
+            : <span className="savechip" data-state={saveState} role="status" aria-live="polite">{t(SAVE_KEYS[saveState])}</span>}
+          {running && !linked && <button type="button" className="btn secondary small hide-sm" onClick={bookmark} aria-label={t('player.bookmarkLabel')}><BookmarkIcon /> <span className="hide-sm">{t('player.bookmark')}</span></button>}
+          {!linked && <button type="button" className="btn secondary small" onClick={() => setDrawer(true)} aria-label={t('player.settingsLabel')} aria-haspopup="dialog">{t('player.settings')}</button>}
           <button type="button" className="btn secondary small" onClick={toggleFullscreen} aria-label={fullscreen ? t('player.exitFullscreen') : t('player.fullscreen')} aria-pressed={fullscreen}><ExpandIcon /></button>
         </div>
       </div>
@@ -279,7 +291,32 @@ export function Player({ slug, mode, channel = 'production' }: { slug: string; m
           </div>
         </div>
       )}
-      {state !== 'disabled' && state !== 'error' && (
+      {linked && state === 'running' && (linked.open === 'embed' && !linked.local ? (
+        <div className="stage">
+          <iframe
+            className="embed-frame"
+            src={linked.url}
+            title={t('linked.frameTitle', { title, host: linked.host })}
+            allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+            referrerPolicy="no-referrer"
+            // a same-origin link must never get allow-same-origin (it could reach the app)
+            sandbox={(() => { try { return new URL(linked.url).origin === location.origin } catch { return true } })()
+              ? 'allow-scripts allow-forms allow-popups'
+              : 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation'}
+          />
+        </div>
+      ) : (
+        <div className="link-card">
+          <img src={linked.cover} alt="" />
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          <p style={{ margin: 0, maxWidth: '32rem' }}>{t('linked.cardBody', { host: linked.host })}</p>
+          <div className="btn-row" style={{ justifyContent: 'center' }}>
+            <a className="btn" href={linked.url} target="_blank" rel="noopener noreferrer">{t('linked.open')} ↗<span className="sr"> {t('linked.newTab')}</span></a>
+            <a className="btn secondary" href="#/">{t('player.toShelf')}</a>
+          </div>
+        </div>
+      ))}
+      {!linked && state !== 'disabled' && state !== 'error' && (
         <div className="stage">
           <iframe
             key={runId}

@@ -723,3 +723,19 @@ code.mono { background: var(--paper-2); padding: 0.08em 0.38em; border-radius: 5
   .app { background: linear-gradient(to right, var(--paper-2) calc(var(--sidebar-w) - 1px), var(--line-2) calc(var(--sidebar-w) - 1px), var(--line-2) var(--sidebar-w), transparent var(--sidebar-w)); }
   .sidebar { border-right: 0; background: transparent; }
 }
+
+/* linked books (ADR-0014): the card opens the book; details sit underneath */
+.book.linked .book-link { display: grid; gap: 0.5rem; text-decoration: none; color: inherit; border-radius: 14px; }
+.book.linked .book-link:hover .cover-wrap, .book.linked .book-link:focus-visible .cover-wrap { transform: translateY(-6px) rotate(-0.5deg); box-shadow: var(--shadow-lg); }
+.book .details-link { font-size: 0.8rem; color: var(--ink-2); text-underline-offset: 0.2em; justify-self: start; }
+.book .details-link:hover { color: var(--accent); }
+.linked-note { display: flex; gap: 0.6rem; align-items: flex-start; }
+.embed-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+.link-card { flex: 1; display: grid; place-content: center; justify-items: center; gap: 0.8rem; text-align: center; padding: 5rem 1.5rem 2rem; color: #EFE8DA; }
+.link-card img { width: 9rem; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 4px 12px 12px 4px; box-shadow: var(--shadow-lg); }
+.link-card .btn.secondary { color: #EFE8DA; border-color: rgba(239,232,218,.35); background: transparent; }
+
+/* the workshop's "write / link" switch */
+.pill-tabs button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+.mode-switch { margin: 0 0 1.4rem; }
+.mode-switch button svg { width: 1rem; height: 1rem; vertical-align: -0.15em; }

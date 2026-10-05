@@ -23,6 +23,7 @@ import { adminSession } from '../../lib/admin'
 import { mapToZip, downloadBytes } from '../admin/zip'
 import { gh, watchRun, runOp, type OpUpdate } from '../admin/ops'
 import { Preview } from '../admin/Preview'
+import { LinkBook } from './LinkBook'
 import { UploadIcon, PenIcon, TemplateIcon, PlayIcon, DownloadIcon, CheckIcon, GlobeIcon } from '../../components/Icons'
 
 type Mode = 'reader' | 'studio'
@@ -47,7 +48,9 @@ const SNIPPETS: [string, string][] = [
 const emptyDraft = (): Draft => ({ markdown: '', theme: 'manuscript', title: '', tagline: '', rating: 'everyone', warnings: '', storyId: crypto.randomUUID(), target: '', updatedAt: new Date().toISOString() })
 const svgUri = (svg: string) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
 
-export default function Composer({ mode }: { mode: Mode }) {
+export default function Composer({ mode, start = 'make' }: { mode: Mode; start?: 'make' | 'link' }) {
+  const [kind, setKind] = useState<'make' | 'link'>(start)
+  useEffect(() => setKind(start), [start])
   const { toast, stories, refreshCatalog, admin } = useApp()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [tab, setTab] = useState<Tab>('templates')
@@ -218,16 +221,22 @@ export default function Composer({ mode }: { mode: Mode }) {
         <div>
           <p className="eyebrow">{mode === 'studio' ? t('compose.eyebrowStudio') : t('compose.eyebrow')}</p>
           <h1>{mode === 'studio' ? t('compose.titleStudio') : t('compose.title')}</h1>
-          <p className="lede">{mode === 'studio' ? t('compose.ledeStudio') : t('compose.lede')}</p>
+          <p className="lede">{kind === 'link' ? (mode === 'studio' ? t('link.ledeStudio') : t('link.lede')) : mode === 'studio' ? t('compose.ledeStudio') : t('compose.lede')}</p>
         </div>
         <div className="btn-row" style={{ margin: 0 }}>
           {mode === 'studio' && <a className="btn ghost" href="#/admin">← Studio</a>}
-          {draft.markdown && (
+          {kind === 'make' && draft.markdown && (
             <button className="btn ghost" onClick={async () => { if (confirm(t('compose.startOverConfirm'))) { setAssets(new Map()); setDraft(emptyDraft()); setTab('templates'); setPreview(false) } }}>{t('compose.startOver')}</button>
           )}
         </div>
       </div>
 
+      <div className="pill-tabs mode-switch" role="group" aria-label={t('compose.kindSwitch')}>
+        <button type="button" aria-pressed={kind === 'make'} onClick={() => navigate(mode === 'studio' ? '/admin/publish' : '/add')}><PenIcon /> {t('compose.kind.make')}</button>
+        <button type="button" aria-pressed={kind === 'link'} onClick={() => navigate(mode === 'studio' ? '/admin/link' : '/add/link')} data-testid="mode-link"><GlobeIcon /> {t('compose.kind.link')}</button>
+      </div>
+
+      {kind === 'link' ? <LinkBook mode={mode} /> : (
       <div className="composer">
         <div style={{ minWidth: 0 }}>
           <div className="pill-tabs" role="tablist" aria-label={t('compose.sources')}>
@@ -386,6 +395,7 @@ export default function Composer({ mode }: { mode: Mode }) {
           )}
         </aside>
       </div>
+      )}
     </main>
   )
 }

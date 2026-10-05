@@ -11,6 +11,7 @@ import { fuzzySearch } from '../lib/fuzzy'
 import { track } from '../lib/telemetry'
 import { t } from '../lib/i18n'
 import { Cover } from '../components/Cover'
+import { linkFor, marks as loadMarks, onMarks, markOpened, statusFromMark, openTarget, hostOf, type Mark, type LinkInfo } from '../lib/linked'
 import { SearchIcon, FilterIcon, ShelfIllustration, PlusIcon } from '../components/Icons'
 
 type Filters = { length: string[]; rating: string[]; access: string[]; status: string[]; offline: boolean }
@@ -42,7 +43,9 @@ export function Shelf() {
   const [filters, setFilters] = useState<Filters>(loadFilters)
   const [showFilters, setShowFilters] = useState(false)
   const [accent, setAccent] = useState<string | null>(null)
+  const [linkMarks, setLinkMarks] = useState<Record<string, Mark>>({})
 
+  useEffect(() => { loadMarks().then(setLinkMarks); return onMarks(setLinkMarks) as any }, [])
   useEffect(() => {
     primaryProgress().then(setProgress)
     allDownloads().then((rows) => setDownloads(new Map(rows.map((r) => [String(r.key), r.value]))))
@@ -53,9 +56,9 @@ export function Shelf() {
   const visible = useMemo(() => (stories ?? []).filter((s) => releaseFor(s, 'production') || admin), [stories, admin])
   const byStory = useMemo(() => new Map(progress.map((p) => [p.progress.storyId, p])), [progress])
   const downloadedSlugs = useMemo(() => new Set([...downloads.values()].map((d: any) => d.slug)), [downloads])
-  const statusOf = (s: CatalogStory) => { const p = byStory.get(s.storyId); return !p ? 'unread' : p.progress.completion === 'completed' ? 'finished' : 'inProgress' }
+  const statusOf = (s: CatalogStory) => { if (linkFor(s)) return statusFromMark(linkMarks[s.storyId]); const p = byStory.get(s.storyId); return !p ? 'unread' : p.progress.completion === 'completed' ? 'finished' : 'inProgress' }
 
-  const spotlight = !progress.length ? [...visible].filter((s) => releaseFor(s) && !s.local).sort((a, b) => (releaseFor(b)?.publishedAt ?? '').localeCompare(releaseFor(a)?.publishedAt ?? ''))[0] ?? null : null
+  const spotlight = !progress.length ? [...visible].filter((s) => releaseFor(s) && !s.local && !linkFor(s)).sort((a, b) => (releaseFor(b)?.publishedAt ?? '').localeCompare(releaseFor(a)?.publishedAt ?? ''))[0] ?? null : null
   const heroEntry = progress.find((p) => p.progress.completion !== 'completed' && visible.some((s) => s.storyId === p.progress.storyId)) ?? progress[0]
   const hero = heroEntry ? visible.find((s) => s.storyId === heroEntry.progress.storyId) : null
   useEffect(() => {
@@ -77,16 +80,19 @@ export function Shelf() {
     })
     if (q.trim()) list = fuzzySearch(list, q, (s) => [[s.title, 3], [s.tagline ?? '', 1.5], [s.synopsis ?? '', 1], [(releaseFor(s)?.meta?.content?.warnings ?? []).join(' '), 0.8]])
     return list
-  }, [visible, q, filters, byStory, downloadedSlugs])
+  }, [visible, q, filters, byStory, downloadedSlugs, linkMarks])
 
   const toggle = (key: keyof Filters, value: string) => setFilters((f) => {
     const cur = f[key] as string[]
     return { ...f, [key]: cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value] }
   })
 
-  const card = (s: CatalogStory) => (
-    <BookCard key={s.storyId} story={s} progress={byStory.get(s.storyId)} downloaded={downloads.has(releaseFor(s)?.releaseId ?? '')} />
-  )
+  const card = (s: CatalogStory) => {
+    const link = linkFor(s)
+    return link
+      ? <LinkedCard key={s.storyId} story={s} link={link} status={statusOf(s)} />
+      : <BookCard key={s.storyId} story={s} progress={byStory.get(s.storyId)} downloaded={downloads.has(releaseFor(s)?.releaseId ?? '')} />
+  }
   const inProgress = visible.filter((s) => statusOf(s) === 'inProgress')
   const unread = visible.filter((s) => statusOf(s) === 'unread')
     .sort((a, b) => (releaseFor(b)?.publishedAt ?? '').localeCompare(releaseFor(a)?.publishedAt ?? ''))
@@ -270,6 +276,35 @@ function BookCard({ story, progress, downloaded }: { story: CatalogStory; progre
         {downloaded && !story.local && <span className="badge good">{t('badge.offline')}</span>}
       </span>
     </a>
+  )
+}
+
+/* A book hosted elsewhere: tapping it opens the book itself (ADR-0014). */
+function LinkedCard({ story, link, status }: { story: CatalogStory; link: LinkInfo; status: string }) {
+  const rel = releaseFor(story)
+  const target = openTarget(story, link)
+  const host = hostOf(link.url)
+  const tab = target.newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {}
+  return (
+    <div className="book story-card linked">
+      <a className="book-link" href={target.href} {...tab} onClick={() => { markOpened(story.storyId) }}
+        aria-label={target.newTab ? t('linked.openTabLabel', { title: story.title, host }) : t('linked.openHereLabel', { title: story.title })}>
+        <span className="cover-wrap">
+          <Cover src={coverUrl(story, rel)} title={story.title} />
+          <span className="ribbon">
+            <span className="badge info">{t('linked.kind.' + (link.kind ?? 'web'))} ↗</span>
+            {story.local && <span className="badge info">{t('badge.yours')}</span>}
+          </span>
+        </span>
+        <h3>{story.title}</h3>
+        <p className="tag">{link.author ? t('linked.by', { author: link.author }) : story.tagline}</p>
+      </a>
+      <span className="badges">
+        <span className={`badge ${status === 'finished' ? 'good' : ''}`}>{t('status.' + status)}</span>
+        <span className="badge">{host}</span>
+      </span>
+      <a className="details-link" href={`#/story/${story.slug}`}>{t('linked.details')}</a>
+    </div>
   )
 }
 

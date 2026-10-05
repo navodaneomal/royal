@@ -123,6 +123,18 @@ export const ManifestSchema = z.object({
     name: z.string().max(120),
   })).default([]),
   migrations: z.array(MigrationSchema).default([]),
+  // Linked books (ADR-0014): the book itself lives on another site. Storyframe
+  // keeps the card, the cover, and the reader's "opened / finished" marks; it
+  // never frames the link with reader data, and no bridge session is opened.
+  link: z.object({
+    url: z.string().max(2000).refine(
+      (u) => /^https:\/\/[^\s/?#@]+[^\s]*$/i.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s]*)?$/i.test(u),
+      'link.url must be an https:// address',
+    ),
+    open: z.enum(['tab', 'embed']).default('tab'),
+    kind: z.enum(['web', 'pdf', 'epub', 'flipbook', 'audio', 'video', 'other']).default('web'),
+    author: z.string().max(120).optional(),
+  }).optional(),
   build: z.record(z.unknown()).optional(),      // declarative build block — see packages/publishing/src/build.js
   integrity: z.object({
     generatedAt: z.string(),

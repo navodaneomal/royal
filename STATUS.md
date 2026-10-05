@@ -1,22 +1,22 @@
 # STATUS — honest scope (v2 + v3 interface)
 
-Date: 2026-10-04 · Version: 2.0.0 + GitHub Pages hosting + v3 interface · Data plane: local (Supabase adapter optional, not activated here)
+Date: 2026-10-05 · Version: 2.0.0 + GitHub Pages hosting + v3 interface + linked books · Data plane: local (Supabase adapter optional, not activated here)
 
 Real summary lines from the final run of this tree:
 
 ```
 $ npm test
- Test Files  16 passed (16)
-      Tests  145 passed (145)
+ Test Files  17 passed (17)
+      Tests  155 passed (155)
 
 $ npm run typecheck
 > tsc --noEmit                      (0 errors)
 
 $ npm run verify                 (production headers enforced, app CSP included)
-ALL 109 CHECKS PASSED           (single-origin + cross-origin passes; shots/ written)
+ALL 116 CHECKS PASSED           (single-origin + cross-origin passes; shots/ written)
 
 $ VERIFY_DIR=deploy/pages VERIFY_BASE_PATH=/royal/ npm run verify
-ALL 112 CHECKS PASSED           (the GitHub Pages bundle under /royal/, CSP from <meta>)
+ALL 119 CHECKS PASSED           (the GitHub Pages bundle under /royal/, CSP from <meta>)
 ```
 
 Legend — ✅ implemented **and exercised by an automated check** (the Playwright
@@ -155,6 +155,17 @@ Cloudflare account, a Supabase project, a Windows machine, an Android device) ·
 | QR "Open on your phone" share | ✅ | audit opens the dialog (SVG QR, contrast) |
 | Markdown backslash escapes in Quick Books (`\#`, `\*`, …) | 🟡 | unit tests |
 
+## Linked books — books hosted elsewhere (2026-10-05)
+
+| Item | State | Evidence |
+|---|---|---|
+| `link` lane: card-only package (manifest + cover), same builder/gate/hash, channels, promote, rollback | ✅ | unit tests (`tests/publishing/link.test.js`), including an end-to-end CLI build → validate → publish → promote of a linked book with no SDK; *Alice’s Adventures in Wonderland* is published by `npm run build` like the other books |
+| Tapping a linked card opens the book (new tab, `noopener noreferrer`); detail page "Open the book"; "Mark as finished" remembered | ✅ | audit (href, target, rel; detail link; finished badge on the shelf) |
+| Link a book (`#/add/link`, Studio → Link a book): smart links (Drive/Docs preview, YouTube/Vimeo players, flipbooks, Dropbox, PDFs), generated or uploaded cover, keep on device | ✅ | audit: a Drive share link becomes its viewer link and lands on "Your books"; unit tests for every rewrite and refusal |
+| Many at once (list / CSV) | ✅ parse · 📦 GitHub | audit: a pasted list → 3 ready cards, bad line named; one-commit publish (`publishMany`) needs a token |
+| Embedded links inside the app: sandboxed frame, no bridge/reader data, exact-origin `frame-src` allowlist | 🟡 | checked by hand in Chromium: a published embedded link added only its origin to `frame-src`, loaded in the cross-origin sandbox, "Open on …" fallback shown; unit test for the allowlist. Not in the audit (publishing an embedded book needs GitHub) |
+| `npm start`, HOST-IT-TODAY.md | ✅ / done | `npm start` = build + preview |
+
 ## Phase 6 — Tests
 
 - vitest: 13 files, 102 tests. Covers the reducer, migrations, import planning, the bridge (1.0 and 1.1), the validator, the builder, Quick Books, themes and covers, compat and diffs, `_headers`, registry ops, commit planning, docx import, scaffolding, runtime config, i18n, and the shared-protocol copy for Deno.
@@ -171,6 +182,7 @@ Cloudflare account, a Supabase project, a Windows machine, an Android device) ·
 
 ## Known limits, stated plainly
 
+- **Linked books:** Storyframe cannot see a reader's place inside another site. It keeps only "last opened" and a reader-set "finished", on the device. Embedding works only where the other site allows it; on Cloudflare a newly embedded origin needs an app redeploy.
 - **Books on this device live in that browser only.** Clearing site data removes them. "Download the book folder" in the workshop is the backup.
 - **The reader bundle is about 6 KB gzip larger** than v2 (104 KB, from 97.7 KB) because of the new shell, icons and strings. The workshop, QR code and Studio load only when opened.
 

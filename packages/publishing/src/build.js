@@ -21,6 +21,7 @@ import { toText, toBytes, normalizePath, extOf } from './files.js'
 import { createInliner, stampCsp, stampReleaseAttr } from './inline.js'
 import { STORY_CSP_META } from './policy.js'
 import { compileQuickBook } from './quickbook/compile.js'
+import { isAllowedLinkUrl } from './link.js'
 
 export const BuildSchema = z.object({
   entry: z.string().min(1).optional(),
@@ -51,6 +52,7 @@ const SDK_MARKERS = [
 /** Detect which lane a source folder belongs to — used by the Admin Studio. */
 export function detectLane(manifest) {
   const b = manifest?.build ?? {}
+  if (manifest?.link || b.link) return 'link'
   if (b.quickbook) return 'quick'
   if (b.prebuilt) return 'prebuilt'
   if (b.concat) return 'wrap'
@@ -76,6 +78,7 @@ export function buildPackage({ source, manifest: rawManifest, sdk, themeOverride
     try { manifest = JSON.parse(toText(text)) } catch (e) { return fail('storyframe.json is not valid JSON: ' + e.message) }
   }
   manifest = structuredClone(manifest)
+  if (manifest.link) return buildLinkedPackage(source, manifest, log)
   if (!manifest.build) return fail('storyframe.json has no "build" block — see docs/BOOK-AUTHORING.md §Build')
   const parsedBuild = BuildSchema.safeParse(manifest.build)
   if (!parsedBuild.success) return fail('build: ' + parsedBuild.error.issues.map((i) => `${i.path.join('.')} ${i.message}`.trim()).join('; '))
@@ -159,4 +162,23 @@ export function buildPackage({ source, manifest: rawManifest, sdk, themeOverride
   if (!['html', 'htm'].includes(extOf(entryName))) log.warnings.push(`entrypoint ${entryName} is not an .html file`)
 
   return { ok: log.errors.length === 0, files: out, manifest, log, lane }
+}
+
+/**
+ * The link lane (ADR-0014): the book lives on another site, so the package is
+ * only its card — storyframe.json + the cover. No HTML, no SDK, no story code.
+ */
+function buildLinkedPackage(source, manifest, log) {
+  const out = new Map()
+  const done = (ok) => ({ ok, files: out, manifest, log, lane: 'link' })
+  if (!manifest.link?.url || !isAllowedLinkUrl(manifest.link.url)) { log.errors.push('link.url must be an https:// address'); return done(false) }
+  manifest.entrypoint = 'storyframe.json'
+  manifest.build = { link: {} }
+  const coverName = normalizePath(manifest.cover ?? 'cover.svg')
+  if (!coverName || !source.has(coverName)) { log.errors.push(`cover not found: ${manifest.cover ?? 'cover.svg'} — upload an image or generate one`); return done(false) }
+  out.set(coverName, source.get(coverName))
+  out.set('storyframe.json', toBytes(JSON.stringify(manifest, null, 2) + '\n'))
+  const ignored = [...source.keys()].filter((p) => p !== coverName && p !== 'storyframe.json' && !/^(CHANGELOG|README)\.md$/i.test(p) && !p.startsWith('package/'))
+  if (ignored.length) log.notes.push(`a linked book carries only its card — left out: ${ignored.slice(0, 6).join(', ')}${ignored.length > 6 ? '…' : ''}`)
+  return done(true)
 }

@@ -42,7 +42,8 @@ switch (action) {
     const firstRun = !existsSync(join(hostDir(), 'registry.json'))
     const channel = env('SF_CHANNEL') || (firstRun ? 'production' : 'beta')
     if (firstRun) console.log(`first content run — publishing to ${channel}`)
-    const slugs = slugInput ? [slugInput] : changedSlugs()
+    // one slug, a comma-separated list (the Studio's bulk "go live"), or what this push changed
+    const slugs = slugInput ? slugInput.split(',').map((x) => x.trim()).filter(Boolean) : changedSlugs()
     if (!slugs.length) console.log('no story folders changed — nothing to publish')
     for (const slug of slugs) {
       const dir = join(REPO, 'stories', slug)

@@ -12,6 +12,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, normalize, extname, sep, resolve } from 'node:path'
 import { appCsp } from '../packages/publishing/src/headers.js'
 import { STORY_CSP } from '../packages/publishing/src/policy.js'
+import { linkedFrameOrigins } from '../packages/publishing/src/link.js'
 
 const ROOT = resolve(process.cwd(), process.env.PREVIEW_DIR || join('apps', 'web', 'dist'))
 const PORT = Number(process.env.PORT || 4173)
@@ -22,7 +23,12 @@ const PAGES_LIKE = BASE_PATH !== '/'
 // audit runs with the app CSP enforced. A Pages-like bundle carries its CSP as
 // <meta> instead and gets no headers, exactly like GitHub Pages.
 const storyOrigin = (() => { try { return new URL(JSON.parse(CONFIG ?? '{}').storyOrigin).origin } catch { return null } })()
-const APP_CSP = appCsp({ storyOrigins: storyOrigin ? [storyOrigin] : [] })
+// embedded linked books: read the registry on each document request (it changes as you publish)
+const appCspNow = () => {
+  let registry = null
+  try { registry = JSON.parse(readFileSync(join(ROOT, 'stories-host', 'registry.json'), 'utf8')) } catch { /* no library yet */ }
+  return appCsp({ storyOrigins: storyOrigin ? [storyOrigin] : [], frameOrigins: linkedFrameOrigins(registry) })
+}
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.webp': 'image/webp',
@@ -53,7 +59,7 @@ createServer((req, res) => {
     'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
     'cache-control': isStory ? 'public, max-age=31536000, immutable' : 'no-cache',
     'x-content-type-options': 'nosniff',
-    ...(!PAGES_LIKE && isAppDoc ? { 'content-security-policy': APP_CSP } : {}),
+    ...(!PAGES_LIKE && isAppDoc ? { 'content-security-policy': appCspNow() } : {}),
     ...(!PAGES_LIKE && isStory && extname(file) === '.html' ? { 'content-security-policy': `${STORY_CSP}; frame-ancestors 'self'` } : {}),
   })
   res.end(readFileSync(file))

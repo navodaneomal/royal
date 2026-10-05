@@ -87,6 +87,38 @@ export class GitHub {
     return { commitSha: commit.sha, message, deleted: plan.deletes.length, uploaded: plan.upserts.length, skipped: plan.skipped, htmlUrl: commit.html_url }
   }
 
+  /**
+   * Several books in ONE commit (the Studio's bulk link import): each book's
+   * folder is planned exactly like publishStory, then written together.
+   */
+  async publishMany({ branch, books, message, onProgress }: {
+    branch: string; books: { slug: string; files: Map<string, Uint8Array> }[]; message: string; onProgress?: (msg: string) => void
+  }) {
+    onProgress?.('Reading the branch…')
+    const ref = await this.request<any>('GET', `/git/ref/heads/${encodeURIComponent(branch)}`)
+    const head = await this.request<any>('GET', `/git/commits/${ref.object.sha}`)
+    const tree = await this.request<any>('GET', `/git/trees/${head.tree.sha}?recursive=1`)
+    const blobs = (tree.tree as any[]).filter((e) => e.type === 'blob')
+    const entries: any[] = []
+    let uploaded = 0
+    let deleted = 0
+    for (const [i, book] of books.entries()) {
+      const existing = blobs.filter((e) => e.path.startsWith(`stories/${book.slug}/`)).map((e) => ({ path: e.path, sha: e.sha }))
+      const plan = planStoryCommit({ slug: book.slug, files: book.files, existing })
+      onProgress?.(`Uploading ${i + 1}/${books.length}: ${book.slug}`)
+      for (const u of plan.upserts) {
+        const blob = await this.request<any>('POST', '/git/blobs', { content: toBase64(u.bytes), encoding: 'base64' })
+        entries.push({ path: u.path, mode: '100644', type: 'blob', sha: blob.sha }); uploaded++
+      }
+      for (const path of plan.deletes) { entries.push({ path, mode: '100644', type: 'blob', sha: null }); deleted++ }
+    }
+    onProgress?.('Writing one commit…')
+    const newTree = await this.request<any>('POST', '/git/trees', { base_tree: head.tree.sha, tree: entries })
+    const commit = await this.request<any>('POST', '/git/commits', { message, tree: newTree.sha, parents: [ref.object.sha] })
+    await this.request('PATCH', `/git/refs/heads/${encodeURIComponent(branch)}`, { sha: commit.sha, force: false })
+    return { commitSha: commit.sha, message, uploaded, deleted }
+  }
+
   /** Operator action → workflow_dispatch; returns the run id when GitHub provides one. */
   async dispatch(workflow: string, ref: string, inputs: Record<string, string>) {
     const res = await this.request<any>('POST', `/actions/workflows/${encodeURIComponent(workflow)}/dispatches`, { ref, inputs })

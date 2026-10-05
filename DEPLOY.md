@@ -68,6 +68,12 @@ How it differs from Cloudflare — honestly:
 | caching | `Cache-Control: max-age=600` on everything (observed 2026-10-03) — a publish can take up to ~10 minutes to show everywhere | immutable releases cached forever, registry never cached |
 | terms | not for commercial sites or SaaS (GitHub's Pages policy) | fine for commercial use |
 
+**Linked books shown inside the app** (`open: "embed"`): their exact
+origins are added to the app's security policy when the site is built. On
+GitHub Pages that happens automatically after every publish. On Cloudflare,
+run **Actions → app → Run workflow** after publishing an embedded link from a
+new site; links that open in a new tab need nothing.
+
 Moving later is painless: the `content` branch is the source of truth for
 both. Set the repository variable `PAGES_DISABLED=true` to switch the Pages
 workflow off.

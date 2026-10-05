@@ -131,4 +131,4 @@ ADR-0001 workspaces · 0002 local data plane · 0003 opaque offline + sandbox ·
 0007 declarative builder · 0008 runtime config · 0009 protocol 1.1 ·
 0010 Capacitor Android · 0011 compatibility gate + migrations ·
 0012 GitHub Pages + blob-frame CSP · 0013 workshop, books on this
-device, hosting centre**.
+device, hosting centre · 0014 linked books**.

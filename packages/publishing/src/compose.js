@@ -17,6 +17,8 @@ import { generateCover } from './cover.js'
 import { buildPackage } from './build.js'
 import { validatePackage, groupIssues } from './validate.js'
 import { packFiles, stampReleaseFiles } from './pack.js'
+import { smartLink, titleFromUrl, linkedManifest } from './link.js'
+import { COVER_EXTENSIONS } from './policy.js'
 
 export const THEME_COVER = {
   manuscript: { palette: 'manuscript', motif: 'lantern' },
@@ -126,4 +128,72 @@ export function stampComposed(composed, now = new Date().toISOString()) {
   const entrypoint = build.manifest.entrypoint
   const stamped = stampReleaseFiles(build.files, { entrypoint, releaseId: pack.releaseId, packageHash: pack.packageHash, generatedAt: now })
   return { files: stamped.files, integrity: stamped.integrity, entry: stamped.files.get(entrypoint), entrypoint }
+}
+
+/* ── linked books (ADR-0014) ──────────────────────────────────────────── */
+export const LINK_COVER = {
+  web: { palette: 'sea', motif: 'horizon' }, pdf: { palette: 'dusk', motif: 'door' }, epub: { palette: 'watercolor', motif: 'lantern' },
+  flipbook: { palette: 'manuscript', motif: 'leaf' }, audio: { palette: 'forest', motif: 'waves' }, video: { palette: 'noir', motif: 'orbit' },
+  other: { palette: 'minimal', motif: 'grid' },
+}
+
+/**
+ * A book hosted elsewhere → a publishable card: smart link handling, title
+ * from the URL when none is given, a generated cover (or the uploaded one),
+ * the next version when updating — then the same builder, gate, and hash.
+ * @param {object} o  { url, title?, author?, tagline?, synopsis?, kind?, open?, rating?, warnings?, minutes?, language?,
+ *                      storyId?, slug?, existing?, coverFile?: { name, bytes }, cover?: { palette, motif } }
+ */
+export function composeLinkedBook(o) {
+  const link = smartLink(o.url)
+  const fail = (message) => ({
+    ok: false, link, manifest: null, source: new Map(), build: null, validation: null, pack: null, cover: null,
+    issues: [{ severity: 'error', code: 'link_url', items: [message], fix: 'Paste the full address of the book (https://…).' }],
+    summary: { title: o.title ?? '', slug: '', storyId: '', version: '', kind: o.kind ?? 'web', open: o.open ?? 'tab', host: '', url: '', releaseId: null, totalBytes: 0, embeddable: false, note: '' },
+  })
+  if (!link.ok) return fail(link.error)
+  const title = String(o.title || titleFromUrl(link.url)).trim().slice(0, 120)
+  const kind = o.kind ?? link.kind
+  const open = o.open ?? link.open
+  const storyId = o.existing?.storyId ?? o.storyId ?? globalThis.crypto.randomUUID()
+  const slug = o.existing?.slug ?? (o.slug ? slugify(o.slug, 'linked-book') : slugify(title, 'linked-book'))
+  const version = o.existing ? nextVersion(o.existing.version) : '1.0.0'
+  const author = o.author ? String(o.author).trim().slice(0, 120) : undefined
+  const tagline = String(o.tagline || (author ? `By ${author}` : `Hosted on ${link.host}`)).slice(0, 140)
+
+  let coverName = 'cover.svg'
+  let coverBytes
+  let cover = null
+  const ext = o.coverFile ? String(o.coverFile.name).split('.').pop().toLowerCase() : ''
+  if (o.coverFile && COVER_EXTENSIONS.includes(ext)) {
+    coverName = `cover.${ext === 'jpeg' ? 'jpg' : ext}`
+    coverBytes = o.coverFile.bytes
+  } else {
+    const look = { ...(LINK_COVER[kind] ?? LINK_COVER.web), ...(o.cover ?? {}) }
+    cover = generateCover({ title, subtitle: author ? `by ${author}` : link.host, palette: look.palette, motif: look.motif })
+    coverBytes = toBytes(cover.svg)
+  }
+
+  const manifest = linkedManifest({
+    storyId, slug, version, title, tagline, synopsis: o.synopsis ?? '', cover: coverName,
+    url: link.url, open, kind, author, rating: o.rating ?? 'everyone', warnings: o.warnings ?? [],
+    minutes: o.minutes ?? [20, 60], language: o.language ?? 'en', accessibility: o.accessibility ?? {},
+  })
+  const source = new Map([
+    ['storyframe.json', toBytes(JSON.stringify(manifest, null, 2) + '\n')],
+    [coverName, coverBytes],
+    ['CHANGELOG.md', toBytes(`# Changelog\n\n## ${version}\n\n${o.existing ? 'Updated link card.' : 'Linked from ' + link.host + '.'}\n`)],
+  ])
+  const build = buildPackage({ source })
+  const validation = build.ok ? validatePackage({ manifest: build.manifest, files: build.files }) : null
+  const pack = build.ok ? packFiles(build.files) : null
+  const buildIssues = (build.log?.errors ?? []).map((m) => ({ severity: 'error', code: 'build', message: m, fix: 'Fix the field named here.' }))
+  return {
+    ok: !!validation?.ok, link, manifest: build.manifest ?? manifest, source, build, validation, pack, cover,
+    issues: groupIssues([...buildIssues, ...(validation?.issues ?? [])]),
+    summary: {
+      title, slug, storyId, version, kind, open, host: link.host, url: link.url, author: author ?? '', tagline,
+      releaseId: pack?.releaseId ?? null, totalBytes: validation?.totalBytes ?? 0, embeddable: link.embeddable, note: link.note,
+    },
+  }
 }

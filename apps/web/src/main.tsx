@@ -226,7 +226,7 @@ function App() {
             {route === 'settings' && <SettingsView />}
             {route === 'add' && (
               <Suspense fallback={<main className="page"><h1>{t('compose.title')}</h1><p className="lede">{t('compose.loading')}</p></main>}>
-                <Composer mode="reader" />
+                <Composer mode="reader" start={parts[1] === 'link' ? 'link' : 'make'} />
               </Suspense>
             )}
             {route === 'admin' && (

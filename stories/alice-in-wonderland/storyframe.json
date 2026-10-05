@@ -1,0 +1,64 @@
+{
+  "$schema": "https://storyframe.dev/schemas/storyframe.v1.json",
+  "storyId": "a11ce5ad-0000-4000-8000-000000000011",
+  "slug": "alice-in-wonderland",
+  "version": "1.0.0",
+  "protocolVersion": "1.0",
+  "stateSchemaVersion": 1,
+  "title": "Alice’s Adventures in Wonderland",
+  "tagline": "Down the rabbit-hole — a linked book, read on Project Gutenberg.",
+  "synopsis": "Alice follows a White Rabbit down a hole and into a world of mad tea-parties, grinning cats, and a Queen who wants everyone’s head. This copy lives on Project Gutenberg, the free public-domain library: tap the card and it opens there. It shows how a book hosted anywhere can sit on this shelf.",
+  "cover": "cover.svg",
+  "entrypoint": "storyframe.json",
+  "languages": [
+    "en"
+  ],
+  "defaultLanguage": "en",
+  "capabilities": [],
+  "content": {
+    "rating": "everyone",
+    "warnings": [],
+    "estimatedMinutes": {
+      "firstSession": 90,
+      "total": [
+        90,
+        180
+      ]
+    }
+  },
+  "accessibility": {
+    "keyboard": false,
+    "screenReader": false,
+    "reducedMotion": false,
+    "captions": false,
+    "untimedMode": true,
+    "nonAudioAlternative": true
+  },
+  "offline": {
+    "eligible": false,
+    "required": [],
+    "optional": [],
+    "maxBytes": 4194304
+  },
+  "checkpoints": [
+    {
+      "id": "opened",
+      "label": "Opened",
+      "order": 10
+    }
+  ],
+  "items": [],
+  "achievements": [],
+  "choices": [],
+  "endings": [],
+  "migrations": [],
+  "link": {
+    "url": "https://www.gutenberg.org/ebooks/11",
+    "open": "tab",
+    "kind": "web",
+    "author": "Lewis Carroll"
+  },
+  "build": {
+    "link": {}
+  }
+}

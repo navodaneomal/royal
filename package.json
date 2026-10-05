@@ -20,6 +20,7 @@
     "deploy:bundle": "npm run build && node scripts/deploy-bundle.mjs --zip",
     "content:init": "node scripts/ci/content-branch.mjs init",
     "preview": "node scripts/preview.mjs",
+    "start": "npm run build && npm run preview",
     "test": "vitest run",
     "typecheck": "npm --workspace apps/web run typecheck",
     "verify": "node verify.mjs",

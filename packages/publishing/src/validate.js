@@ -9,6 +9,7 @@ import {
 } from '@storyframe/protocol'
 import { toText, isTextPath, extOf, normalizePath, formatBytes } from './files.js'
 import { MAX_FILE_BYTES, HEAVY_FILE_BYTES, ENTRY_GUIDANCE_BYTES, COVER_EXTENSIONS } from './policy.js'
+import { isAllowedLinkUrl } from './link.js'
 
 /* external-origin detectors: attributes, CSS, and network APIs */
 const EXTERNAL_PATTERNS = [
@@ -162,6 +163,19 @@ export function validatePackage({ manifest: rawManifest, files }) {
     add('error', 'cover_missing', `cover file missing from package: ${manifest.cover}`, FIX.cover)
   else if (files.get(normalizePath(manifest.cover)).byteLength > 2 * 1024 * 1024)
     add('warning', 'cover_heavy', 'cover is over 2 MB — the shelf loads every cover', 'Export the cover at ~600×800 as webp or svg.')
+
+  /* linked books (ADR-0014): no story code runs here — the package is a card */
+  if (manifest.link) {
+    if (!isAllowedLinkUrl(manifest.link.url))
+      add('error', 'link_url', `link.url must be an https:// address: ${manifest.link.url}`, 'Paste the full address of the book, starting with https://.')
+    else if (/^http:/i.test(manifest.link.url))
+      add('warning', 'link_dev', 'the link points at this computer (http://localhost) — readers elsewhere cannot open it', 'Use the public https:// address before publishing.')
+    const coverPath = normalizePath(manifest.cover) ?? ''
+    const extra = [...files.keys()].filter((p) => p !== 'storyframe.json' && p !== coverPath && p !== 'integrity.json')
+    if (extra.length)
+      add('error', 'link_extra_files', `a linked book is only its card — unexpected files: ${extra.slice(0, 6).join(', ')}`, 'Keep storyframe.json and the cover; the book itself stays on its own site.')
+    return done(manifest, total, 0)
+  }
 
   /* 6. entrypoint content */
   const entry = entryPath ? files.get(entryPath) : undefined

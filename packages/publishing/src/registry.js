@@ -25,6 +25,7 @@ export function releaseMeta(manifest, sizeBytes) {
     stateSchemaVersion: manifest.stateSchemaVersion, protocolVersion: manifest.protocolVersion,
     capabilities: manifest.capabilities, migrations: manifest.migrations ?? [],
     maxBytes: manifest.offline.maxBytes,
+    ...(manifest.link ? { link: manifest.link } : {}),
   }
 }
 
@@ -67,6 +68,7 @@ export function applyPublish(registry, { manifest, releaseId, packageHash, total
       manifestPath: `${base}/storyframe.json`,
       publishedAt: now, status: 'approved',
       title: manifest.title, tagline: manifest.tagline ?? '', synopsis: manifest.synopsis ?? '', accent: manifest.accent ?? null,
+      ...(manifest.link ? { link: manifest.link } : {}),
       notes, validation,
       meta: releaseMeta(manifest, totalBytes),
     })

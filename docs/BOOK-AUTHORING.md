@@ -12,6 +12,7 @@ accessibility profile. You never write a build script.
 |---|---|---|
 | try a book yourself | **Add a book** (`#/add`, any reader) | drop / write / pick a starter → **Read it now**. Kept privately in that browser, in the same sealed sandbox as every story; works offline. |
 | publish for every reader | **Studio → Publish** (`#/admin/publish`) | the same screen + **Publish for everyone** (one commit to `stories/<slug>/`; tick "skip beta" to put it straight on the shelf). |
+| list a book that is already online | **Link a book** (`#/add/link`, or Studio → Link a book) | paste the address, add a cover — tapping the card opens the book (see *Linked books* below). |
 | control every field | **Studio → Advanced** (`#/admin/new`) | the 8-step wizard: crafted and prebuilt packages, the cover studio, the full accessibility checklist. |
 
 The workshop fills in what you should not have to think about: title (from
@@ -36,6 +37,42 @@ Study* (Manuscript, a clue and an accusation), *The Lantern Fox*
 the directives in use.
 
 The rest of this guide explains what the workshop does, and how to go further.
+
+### Linked books — books hosted somewhere else
+
+A linked book is only a **card**: `storyframe.json` with a `link` block, plus a
+cover. It is published, versioned, promoted, and rolled back like any other
+book, but the book itself stays on its own site.
+
+```json
+{
+  "storyId": "…", "slug": "alice-in-wonderland", "version": "1.0.0", "title": "Alice’s Adventures in Wonderland",
+  "cover": "cover.svg",
+  "link": { "url": "https://www.gutenberg.org/ebooks/11", "open": "tab", "kind": "web", "author": "Lewis Carroll" },
+  "build": { "link": {} }
+}
+```
+
+(The workshop writes the rest of the manifest for you; see `stories/alice-in-wonderland/`.)
+
+- **`open: "tab"`** (default) opens the site in a new tab, with
+  `noopener noreferrer` — always works.
+- **`open: "embed"`** shows it inside Storyframe, in a cross-origin sandbox
+  with no bridge and no reader data. Only for sites built to be embedded:
+  Google Drive/Docs previews, YouTube/Vimeo, and flipbook hosts (Heyzine,
+  AnyFlip, FlipHTML5, Flipsnack, Issuu…). The exact origin is added to the
+  app's `frame-src` when the site is deployed, and nothing else is.
+- Pasted links are understood: a scheme is added, `http` is upgraded, Drive
+  and Docs share links become their `/preview` viewer, YouTube and Vimeo
+  links become their embeddable players, and Dropbox files open instead of
+  downloading. Only `https://` is accepted (plus `http://localhost` for
+  testing).
+- Storyframe cannot see a reader's place inside another site, so it keeps
+  what it honestly can: when they last opened it, and whether they marked it
+  finished — on their device only.
+- **Many at once:** paste one book per line (`Title | link`,
+  `Title — Author | link`, or just the link, or a CSV with `title,url[,author]`).
+  The Studio publishes them all in one commit.
 
 - [1. Choose a lane](#1-choose-a-lane)
 - [2. The book folder](#2-the-book-folder)

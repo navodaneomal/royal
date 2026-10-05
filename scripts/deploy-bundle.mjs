@@ -25,6 +25,7 @@ import { zipSync } from 'fflate'
 import { hostDir, REPO } from '../packages/story-cli/src/lib.mjs'
 import { appHeaders, appCspMeta, storiesHeaders, singleOriginHeaders } from '../packages/publishing/src/headers.js'
 import { writeShareCards } from './share-cards.mjs'
+import { linkedFrameOrigins } from '../packages/publishing/src/link.js'
 
 const argv = process.argv.slice(2)
 const arg = (name, fallback) => {
@@ -77,6 +78,10 @@ function zipDir(dir, file) {
   return { files: Object.keys(entries).length, bytes: bytes.byteLength }
 }
 
+// embedded linked books (ADR-0014): their exact origins join the app's frame-src
+const registry = (() => { try { return JSON.parse(readFileSync(join(HOST, 'registry.json'), 'utf8')) } catch { return null } })()
+const frameOrigins = linkedFrameOrigins(registry)
+
 const made = []
 if (!existsSync(DIST)) { console.error('apps/web/dist missing — run `npm run build` first'); process.exit(1) }
 
@@ -88,6 +93,7 @@ if (!only || only === 'app') {
   writeFileSync(join(dir, '_headers'), appHeaders({
     storyOrigins: storiesOrigin ? [storiesOrigin] : [PAGES_WILDCARD],
     connectOrigins: supabaseUrl ? [supabaseUrl] : [],
+    frameOrigins,
   }))
   made.push(['app', dir])
 }
@@ -111,7 +117,7 @@ if (!only || only === 'single') {
   cpSync(DIST, dir, { recursive: true, filter: noGit })
   if (!existsSync(join(dir, 'stories-host', 'registry.json'))) cpSync(HOST, join(dir, 'stories-host'), { recursive: true, filter: noGit })
   writeJson(join(dir, 'config.json'), config('stories-host'))
-  writeFileSync(join(dir, '_headers'), singleOriginHeaders({ connectOrigins: supabaseUrl ? [supabaseUrl] : [] }))
+  writeFileSync(join(dir, '_headers'), singleOriginHeaders({ connectOrigins: supabaseUrl ? [supabaseUrl] : [], frameOrigins }))
   await writeShareCards(join(dir, 'stories-host'), { appUrl: '../../', storiesUrl: appOrigin ? `${appOrigin}/stories-host` : '' })
   made.push(['single-origin', dir])
 }
@@ -128,7 +134,7 @@ if (only === 'pages') {
   writeJson(join(dir, 'config.json'), config('stories-host'))
   writeFileSync(join(dir, '.nojekyll'), '')
   const index = join(dir, 'index.html')
-  const meta = appCspMeta({ connectOrigins: supabaseUrl ? [supabaseUrl] : [] })
+  const meta = appCspMeta({ connectOrigins: supabaseUrl ? [supabaseUrl] : [], frameOrigins })
   writeFileSync(index, readFileSync(index, 'utf8').replace(/<meta charset="UTF-8" \/>|<meta charset="utf-8" \/>/i, (m) => `${m}\n  ${meta}`))
   if (!readFileSync(index, 'utf8').includes('Content-Security-Policy')) { console.error('could not place the CSP meta in index.html'); process.exit(1) }
   await writeShareCards(join(dir, 'stories-host'), { appUrl: '../../', storiesUrl: appOrigin ? `${appOrigin}/stories-host` : '' })
