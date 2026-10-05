@@ -1,7 +1,8 @@
 # Host it today
 
 From a zip on your computer to a live library with your own books: about
-15 minutes, $0, with only a GitHub account. Every command works the same in
+15 minutes, $0, with only a GitHub account. (The complete, click-by-click
+version, with how everything works, is [START-HERE.md](START-HERE.md).) Every command works the same in
 Windows PowerShell, WSL, macOS, and Linux.
 
 ---
@@ -82,6 +83,7 @@ does the same.
 
 | Symptom | Fix |
 |---|---|
+| Deploy fails: “Branch main is not allowed to deploy to github-pages” | Settings → Environments → github-pages → Deployment branches → add `main` (happens if Pages was switched on before `main` became the default). |
 | “Fix it for me” says a permission is missing | The setup token needs Contents, Actions, Pages, and Administration (write) for `royal`. Make a new one with the pre-filled link. |
 | The site is not updated yet | GitHub Pages caches for up to 10 minutes. Check **Actions → pages** for a green run. |
 | An embedded linked book shows a blank page | That site refuses to be shown inside other apps. Edit the link and choose **Open the site in a new tab**. |
@@ -89,6 +91,6 @@ does the same.
 | Publishing says “connect GitHub first” | The publishing token lives only in that browser tab. Paste it again on the Studio’s Connection page. |
 | Updates I (or Claude) push later do not appear | New work arrives on a working branch; merge it into `main` on GitHub (Pull requests → New). |
 
-More depth: [DEPLOY.md](DEPLOY.md) (every option, including Cloudflare) ·
+More depth: [START-HERE.md](START-HERE.md) (everything, A to Z) · [DEPLOY.md](DEPLOY.md) (every option, including Cloudflare) ·
 [docs/BOOK-AUTHORING.md](docs/BOOK-AUTHORING.md) (making books) ·
 [STATUS.md](STATUS.md) (what is verified, and how).

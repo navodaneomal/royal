@@ -27,7 +27,7 @@ export function Connect() {
     <div>
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>GitHub (production)</h2>
-        <p className="small">Publishing commits your book to <code className="mono">stories/&lt;slug&gt;/</code>; operator buttons start the <code className="mono">publish</code> workflow. Create a <strong>fine-grained personal access token</strong> for this repository only, with <strong>Contents: Read and write</strong> and <strong>Actions: Read and write</strong> (DEPLOY.md, step 4).</p>
+        <p className="small">Publishing commits your book to <code className="mono">stories/&lt;slug&gt;/</code>; operator buttons start the <code className="mono">publish</code> workflow. Create a <strong>fine-grained personal access token</strong> for this repository only, with <strong>Contents: Read and write</strong> and <strong>Actions: Read and write</strong> (START-HERE.md, part 4).</p>
         <form onSubmit={async (e) => { e.preventDefault(); setRepo(repo, branch); if (token) { setGithubToken(token); setToken(''); await test(token) } }}>
           <div className="form-grid">
             <div className="field"><label htmlFor="c-repo">Repository (owner/name)</label>

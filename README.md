@@ -7,7 +7,8 @@ continuous memory** across devices and across time.
 
 The platform is furniture; the stories are the paintings.
 
-**Want it online today?** Follow **[HOST-IT-TODAY.md](HOST-IT-TODAY.md)**: `npm install && npm start`, then one button.
+**New here?** Read **[START-HERE.md](START-HERE.md)**: from the zip to a live library, step by step, and how it all works from A to Z.
+**In a hurry?** **[HOST-IT-TODAY.md](HOST-IT-TODAY.md)**: `npm install && npm start`, then one button.
 
 ```
 npm install          # once — links the workspaces
@@ -149,6 +150,7 @@ docs/                 ARCHITECTURE · BOOK-AUTHORING · protocol · accessibilit
 
 | | |
 |---|---|
+| [`START-HERE.md`](START-HERE.md) | the complete guide: zip → your computer → GitHub Pages → publishing → how it works, A to Z |
 | [`HOST-IT-TODAY.md`](HOST-IT-TODAY.md) | from the zip to a live library in about 15 minutes |
 | [`DEPLOY.md`](DEPLOY.md) | $0 deployment, click by click, with verified free-tier limits and troubleshooting |
 | [`STATUS.md`](STATUS.md) | honest acceptance matrix — verified, code-complete, or not built |

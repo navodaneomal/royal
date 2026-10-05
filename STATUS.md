@@ -164,7 +164,7 @@ Cloudflare account, a Supabase project, a Windows machine, an Android device) ·
 | Link a book (`#/add/link`, Studio → Link a book): smart links (Drive/Docs preview, YouTube/Vimeo players, flipbooks, Dropbox, PDFs), generated or uploaded cover, keep on device | ✅ | audit: a Drive share link becomes its viewer link and lands on "Your books"; unit tests for every rewrite and refusal |
 | Many at once (list / CSV) | ✅ parse · 📦 GitHub | audit: a pasted list → 3 ready cards, bad line named; one-commit publish (`publishMany`) needs a token |
 | Embedded links inside the app: sandboxed frame, no bridge/reader data, exact-origin `frame-src` allowlist | 🟡 | checked by hand in Chromium: a published embedded link added only its origin to `frame-src`, loaded in the cross-origin sandbox, "Open on …" fallback shown; unit test for the allowlist. Not in the audit (publishing an embedded book needs GitHub) |
-| `npm start`, HOST-IT-TODAY.md | ✅ / done | `npm start` = build + preview |
+| `npm start`, HOST-IT-TODAY.md, START-HERE.md (A-to-Z guide) | ✅ / done | `npm start` = build + preview; the guides' click paths were checked against the code, not against a live GitHub Pages site (none exists yet) |
 
 ## Phase 6 — Tests
 
